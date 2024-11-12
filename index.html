@@ -101,10 +101,13 @@
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             try {
+                EnhancedFontAnalyzer.setDebug({
+                    enabled: true,
+                    logLevel: 'verbose',
+                    showDebugPanel: true
+                });
+
                 EnhancedFontAnalyzer.analyzeInteractive();
-                // Headless mode
-                // const report = EnhancedFontAnalyzer.analyzeHeadless();
-                // console.log(report);
 
             } catch (e) {
                 console.error("Font analyzer error:", e);

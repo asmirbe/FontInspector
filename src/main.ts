@@ -35,35 +35,114 @@ interface ModalInfo {
 	modal: HTMLDivElement;
 	targetElement: HTMLElement;
 	highlightButton: HTMLButtonElement;
+	isHighlighted?: boolean;
+}
+
+interface DebugConfig {
+	enabled: boolean;
+	logLevel: 'info' | 'debug' | 'verbose';
+	showDebugPanel: boolean;
 }
 
 const EnhancedFontAnalyzer = (function () {
 	'use strict';
 
-	class FontCategoryDetector {
-		private static readonly categories: Record<string, string[]> = {
-			serif: ['Times New Roman', 'Georgia', 'Garamond'],
-			sansSerif: ['Arial', 'Helvetica', 'Roboto'],
-			display: ['Impact', 'Comic Sans MS'],
-			monospace: ['Courier New', 'Monaco', 'Consolas'],
-			handwriting: ['Brush Script MT', 'Comic Sans MS']
-		};
+	class DebugPanel {
+		private panel: HTMLDivElement;
+		private content: HTMLDivElement;
+		private updateInterval: number | null = null;
+		private counter: HTMLDivElement;
 
-		public detectCategory(fontFamily: string): string {
-			for (const [category, fonts] of Object.entries(FontCategoryDetector.categories)) {
-				if (fonts.includes(fontFamily)) {
-					return category;
-				}
+		constructor() {
+			this.panel = document.createElement('div');
+			this.panel.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 300px;
+            max-height: 400px;
+            background: rgba(0, 0, 0, 0.9);
+            color: #00ff00;
+            font-family: monospace;
+            padding: 10px;
+            border-radius: 4px;
+            z-index: 10005;
+            overflow-y: auto;
+            backdrop-filter: blur(16px);
+        `;
+
+			// Add header with controls
+			const header = document.createElement('div');
+			header.style.cssText = `
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #00ff00;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+        `;
+
+			const title = document.createElement('div');
+			title.textContent = 'Debug Panel';
+
+			this.counter = document.createElement('div');
+			this.counter.style.fontSize = '12px';
+
+			header.appendChild(title);
+			header.appendChild(this.counter);
+			this.panel.appendChild(header);
+
+			this.content = document.createElement('div');
+			this.panel.appendChild(this.content);
+		}
+
+		public startAutoUpdate(callback: () => any): void {
+			// Update every 100ms for real-time monitoring
+			this.updateInterval = window.setInterval(() => {
+				this.update(callback());
+			}, 100);
+		}
+
+		public stopAutoUpdate(): void {
+			if (this.updateInterval) {
+				clearInterval(this.updateInterval);
+				this.updateInterval = null;
 			}
-			return this.analyzeCharacteristics(fontFamily);
 		}
 
-		private analyzeCharacteristics(fontFamily: string): string {
-			return 'unknown';
+		public show(): void {
+			document.body.appendChild(this.panel);
 		}
 
-		public suggestAlternatives(fontFamily: string, category: string): string[] {
-			return FontCategoryDetector.categories[category] || [];
+		public hide(): void {
+			this.stopAutoUpdate();
+			if (this.panel.parentNode) {
+				this.panel.parentNode.removeChild(this.panel);
+			}
+		}
+
+		public update(data: any): void {
+			// Update counter
+			this.counter.textContent = `Tracked: ${data.trackedElements.length}`;
+
+			// Update content with formatted data
+			this.content.innerHTML = `
+            <pre style="margin: 0; white-space: pre-wrap; font-size: 12px;">${this.formatDebugData(data)}</pre>
+        `;
+		}
+
+		private formatDebugData(data: any): string {
+			// Custom formatting for better readability
+			return JSON.stringify({
+				activeModals: data.activeModals.map((modal: any) => ({
+					id: modal.id,
+					element: `${modal.targetElement.tagName}`,
+					text: modal.targetElement.text.substring(0, 20) + '...',
+					highlighted: modal.isHighlighted
+				})),
+				trackedElements: data.trackedElements,
+				timestamp: new Date().toISOString()
+			}, null, 2);
 		}
 	}
 
@@ -84,37 +163,8 @@ const EnhancedFontAnalyzer = (function () {
 				.trim() // Remove leading/trailing spaces
 				.replace(/\s+/g, ' '); // Replace multiple spaces with single space
 
-			// Handle special cases
-			const fontNameMap: { [key: string]: string } = {
-				'arial': 'Arial',
-				'helvetica': 'Helvetica',
-				'times new roman': 'Times New Roman',
-				'timesnewroman': 'Times New Roman',
-				'times': 'Times New Roman',
-				'georgia': 'Georgia',
-				'courier new': 'Courier New',
-				'couriernew': 'Courier New',
-				'verdana': 'Verdana',
-				'trebuchet ms': 'Trebuchet MS',
-				'trebuchetms': 'Trebuchet MS',
-				'impact': 'Impact',
-				'comic sans ms': 'Comic Sans MS',
-				'comicsansms': 'Comic Sans MS',
-				'tahoma': 'Tahoma',
-				'calibri': 'Calibri',
-				'segoe ui': 'Segoe UI',
-				'segoeui': 'Segoe UI',
-				'roboto': 'Roboto',
-				'open sans': 'Open Sans',
-				'opensans': 'Open Sans'
-			};
-
-			// Convert to lowercase for comparison
-			const lowerName = cleanName.toLowerCase();
-
 			// Return mapped name if it exists, otherwise capitalize first letter of each word
-			return fontNameMap[lowerName] ||
-				cleanName.split(' ')
+			return cleanName.split(' ')
 					.map(word => word.charAt(0).toUpperCase() + word.slice(1))
 					.join(' ');
 		}
@@ -218,130 +268,268 @@ const EnhancedFontAnalyzer = (function () {
 			});
 		});
 		private trackedElements: Map<string, TrackedElement> = new Map();
+		private debugConfig: DebugConfig = {
+			enabled: false,
+			logLevel: 'info',
+			showDebugPanel: false
+		};
+		private debugPanel: DebugPanel | null = null;
+
+		public setDebugConfig(config: Partial<DebugConfig>): void {
+			this.debugConfig = {...this.debugConfig, ...config};
+
+			if (this.debugConfig.showDebugPanel) {
+				if (!this.debugPanel) {
+					this.debugPanel = new DebugPanel();
+					// Add clear button functionality
+				}
+				this.debugPanel.show();
+				// Start auto-updates
+				this.debugPanel.startAutoUpdate(() => ({
+					activeModals: Array.from(this.activeModals.entries()).map(([id, info]) => ({
+						id,
+						position: {
+							left: info.modal.style.left,
+							top: info.modal.style.top,
+							zIndex: info.modal.style.zIndex
+						},
+						targetElement: {
+							tagName: info.targetElement.tagName,
+							text: info.targetElement.innerText.substring(0, 50) + '...',
+							trackId: info.targetElement.getAttribute('data-font-track-id')
+						},
+						isHighlighted: info.isHighlighted
+					})),
+					trackedElements: Array.from(this.trackedElements.keys()),
+					topZIndex: this.topZIndex,
+					isActive: this.isActive
+				}));
+			} else if (this.debugPanel) {
+				this.debugPanel.hide();
+			}
+		}
+
+		public deactivate(): void {
+			// Clean up all modals and their associated elements
+			this.activeModals.forEach((_modalInfo, modalId) => {
+				this.cleanupModal(modalId);
+			});
+			this.activeModals.clear();
+			// Clean up all tracked elements
+			this.trackedElements.forEach((_, trackId) => {
+				this.cleanupTrackedElement(trackId);
+			});
+			this.trackedElements.clear();
+
+			// Clean up all modals
+			this.activeModals.forEach((_, modalId) => {
+				this.cleanupModal(modalId);
+			});
+			this.activeModals.clear();
+
+			// Reset z-index counter
+			this.topZIndex = this.baseZIndex;
+
+			// Remove UI elements
+			this.exitButton.style.display = 'none';
+			this.tooltip.style.display = 'none';
+
+			if (this.instructionTooltip && this.instructionTooltip.parentNode) {
+				this.instructionTooltip.remove();
+				this.instructionTooltip = null;
+			}
+
+			// Remove event listeners
+			this.removeEventListeners();
+			this.observer.disconnect();
+
+			this.isActive = false;
+		}
+
+		public activate(): void {
+			this.isActive = true;
+			this.exitButton.style.display = 'block';
+			this.setupEventListeners();
+			this.setupMutationObserver();
+
+			this.instructionTooltip = document.createElement('div');
+			this.instructionTooltip.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            font-size: 14px;
+            font-family: Segoe UI, Helvetica, Arial, sans-serif;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            border: 0;
+            color: white;
+            padding: 16px;
+            border-radius: 4px;
+            z-index: 10003;
+        `;
+			this.instructionTooltip.textContent = 'Hover over text elements to see font information. Click to see details. Click multiple elements to compare fonts.';
+			document.body.appendChild(this.instructionTooltip);
+
+			const dismissInstructions = () => {
+				if (this.instructionTooltip && this.instructionTooltip.parentNode) {
+					this.instructionTooltip.remove();
+					this.instructionTooltip = null;
+				}
+				document.removeEventListener('click', dismissInstructions);
+			};
+
+			document.addEventListener('click', dismissInstructions);
+			setTimeout(dismissInstructions, 3000);
+		}
 
 		private highlightElement(element: HTMLElement, isHighlighting: boolean): void {
+			const trackId = element.getAttribute('data-font-track-id');
+			if (!trackId) return;
+
 			if (isHighlighting) {
-				// Store original styles before modifying
-				const computedStyle = window.getComputedStyle(element);
-				const trackedElement: TrackedElement = {
-					element,
-					originalStyles: {
-						outline: computedStyle.outline,
-						backgroundColor: computedStyle.backgroundColor,
-					}
-				};
+				// Only add if not already tracked
+				if (!this.trackedElements.has(trackId)) {
+					const computedStyle = window.getComputedStyle(element);
+					const trackedElement: TrackedElement = {
+						element,
+						originalStyles: {
+							outline: computedStyle.outline,
+							backgroundColor: computedStyle.backgroundColor,
+						}
+					};
 
-				// Apply highlight effect
-				element.style.outline = '2px solid #2196F3';
-				element.style.backgroundColor = 'rgba(33, 150, 243, 0.1)';
+					// Apply highlight effect
+					element.style.outline = '2px solid #2196F3';
+					element.style.backgroundColor = 'rgba(33, 150, 243, 0.1)';
 
-				this.trackedElements.set(element.getAttribute('data-font-track-id')!, trackedElement);
+					this.trackedElements.set(trackId, trackedElement);
+				}
 			} else {
-				// Restore original styles
-				const tracked = this.trackedElements.get(element.getAttribute('data-font-track-id')!);
+				// Only remove if currently tracked
+				const tracked = this.trackedElements.get(trackId);
 				if (tracked) {
 					element.style.outline = tracked.originalStyles.outline;
 					element.style.backgroundColor = tracked.originalStyles.backgroundColor;
+					this.trackedElements.delete(trackId);
 				}
 			}
 		}
 
-		private createHighlightButton(element: HTMLElement, modalId: string): HTMLButtonElement {
-			const button = document.createElement('button');
-			const trackId = `font-track-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-			element.setAttribute('data-font-track-id', trackId);
-			element.setAttribute('data-modal-id', modalId); // Link element back to modal
+		private log(message: string, data?: any): void {
+			if (!this.debugConfig.enabled) return;
 
-			button.style.cssText = `
-            padding: 4px 8px;
-            margin-left: 8px;
-            border: none;
-            border-radius: 4px;
-            background: #f0f0f0;
-            cursor: pointer;
-            font-size: 12px;
-        `;
-			button.textContent = 'Highlight Element';
+			const timestamp = new Date().toISOString();
+			console.log(`[${timestamp}] ${message}`, data || '');
+		}
 
-			let isHighlighted = false;
+		private updateDebugPanel(): void {
+			if (!this.debugPanel || !this.debugConfig.showDebugPanel) return;
 
-			button.addEventListener('click', (e) => {
-				e.stopPropagation();
-				isHighlighted = !isHighlighted;
-				this.highlightElement(element, isHighlighted);
-				button.textContent = isHighlighted ? 'Remove Highlight' : 'Highlight Element';
-				button.style.background = isHighlighted ? '#2196F3' : '#f0f0f0';
-				button.style.color = isHighlighted ? 'white' : 'black';
-			});
+			const debugData = {
+				activeModals: Array.from(this.activeModals.entries()).map(([id, info]) => ({
+					id,
+					position: {
+						left: info.modal.style.left,
+						top: info.modal.style.top,
+						zIndex: info.modal.style.zIndex
+					},
+					targetElement: {
+						tagName: info.targetElement.tagName,
+						text: info.targetElement.innerText.substring(0, 50) + '...',
+						trackId: info.targetElement.getAttribute('data-font-track-id')
+					},
+					isHighlighted: info.isHighlighted
+				})),
+				trackedElements: Array.from(this.trackedElements.keys()),
+				topZIndex: this.topZIndex,
+				isActive: this.isActive
+			};
 
-			return button;
+			this.debugPanel.update(debugData);
 		}
 
 		private cleanupTrackedElement(trackId: string): void {
 			const tracked = this.trackedElements.get(trackId);
 			if (tracked) {
 				const element = tracked.element;
-				// Restore original styles
-				element.style.outline = tracked.originalStyles.outline;
-				element.style.backgroundColor = tracked.originalStyles.backgroundColor;
 
-				// Remove our custom attribute
-				element.removeAttribute('data-font-track-id');
+				// Only restore styles if the element still exists in the DOM
+				if (element && element.isConnected) {
+					element.style.outline = tracked.originalStyles.outline;
+					element.style.backgroundColor = tracked.originalStyles.backgroundColor;
+					element.removeAttribute('data-font-track-id');
+					element.removeAttribute('data-modal-id');
+				}
 
-				// Remove from tracking
 				this.trackedElements.delete(trackId);
+
+				if (this.debugConfig.enabled) {
+					this.updateDebugPanel();
+				}
 			}
 		}
-
-		private cleanupModal(modalId: string): void {
-			const modalInfo = this.activeModals.get(modalId);
-			if (modalInfo) {
-				const { modal, targetElement, highlightButton } = modalInfo;
-
-				// Check if element is highlighted
-				if (highlightButton.textContent === 'Remove Highlight') {
-					const trackId = targetElement.getAttribute('data-font-track-id');
-					if (trackId) {
-						this.cleanupTrackedElement(trackId);
-					}
-				}
-
-				// Remove modal-element association
-				targetElement.removeAttribute('data-modal-id');
-
-				// Remove the modal
-				if (modal.parentNode) {
-					modal.parentNode.removeChild(modal);
-				}
-
-				// Remove from active modals
-				this.activeModals.delete(modalId);
-			}
-		}
-
 
 		constructor() {
 			this.createTooltip();
 			this.createExitButton();
 		}
 
-		private createTooltip(): void {
-			this.tooltip = document.createElement('div');
-			this.tooltip.style.cssText = `
-            position: fixed;
-            background: rgba(0, 0, 0, 0.8);
-				backdrop-filter: blur(16px);
-            padding: 8px;
-            color: white;
-            font-family: Segoe UI, Helvetica, Arial, sans-serif;
-            font-size: 14px;
-            line-height: 1;
-            border-radius: 4px;
-            pointer-events: none;
-            z-index: 10000;
-            display: none;
-        `;
-			document.body.appendChild(this.tooltip);
+		private createHighlightButton(element: HTMLElement, modalId: string): HTMLButtonElement {
+			const button = document.createElement('button');
+			const trackId = `font-track-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+			element.setAttribute('data-font-track-id', trackId);
+			element.setAttribute('data-modal-id', modalId);
+
+			button.style.cssText = `
+                padding: 4px 8px;
+                margin-left: 8px;
+                border: none;
+                border-radius: 4px;
+                background: #f0f0f0;
+                cursor: pointer;
+                font-size: 12px;
+            `;
+			button.textContent = 'Highlight Element';
+
+			let isProcessing = false; // Add debounce flag
+			let isHighlighted = false;
+
+			button.addEventListener('click', async (e) => {
+				e.stopPropagation();
+
+				// Prevent rapid clicking
+				if (isProcessing) return;
+				isProcessing = true;
+
+				try {
+					isHighlighted = !isHighlighted;
+
+					// Update button state
+					button.textContent = isHighlighted ? 'Remove Highlight' : 'Highlight Element';
+					button.style.background = isHighlighted ? '#2196F3' : '#f0f0f0';
+					button.style.color = isHighlighted ? 'white' : 'black';
+
+					// Update element highlight
+					this.highlightElement(element, isHighlighted);
+
+					// Update modal state
+					const modalInfo = this.activeModals.get(modalId);
+					if (modalInfo) {
+						modalInfo.isHighlighted = isHighlighted;
+					}
+
+					// Force debug panel update
+					if (this.debugConfig.enabled) {
+						this.updateDebugPanel();
+					}
+				} finally {
+					// Small delay to prevent rapid clicking
+					await new Promise(resolve => setTimeout(resolve, 100));
+					isProcessing = false;
+				}
+			});
+
+			return button;
 		}
 
 		private createModal(id: string): HTMLDivElement {
@@ -393,27 +581,24 @@ const EnhancedFontAnalyzer = (function () {
 			}
 		}
 
-		private createExitButton(): void {
-			this.exitButton = document.createElement('button');
-			this.exitButton.textContent = 'Cancel';
-			this.exitButton.style.cssText = `
+		private createTooltip(): void {
+			this.tooltip = document.createElement('div');
+			this.tooltip.style.cssText = `
             position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 8px;
             background: rgba(0, 0, 0, 0.8);
-				backdrop-filter: blur(16px);
+			backdrop-filter: blur(16px);
             padding: 8px;
-				border-radius: 4px;
-				    font-size: 14px;
-    line-height: 1;
+            border: 0;
             color: white;
-            cursor: pointer;
-            z-index: 10002;
+            font-family: Segoe UI, Helvetica, Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1;
+            border-radius: 4px;
+            pointer-events: none;
+            z-index: 10000;
             display: none;
         `;
-			this.exitButton.onclick = () => this.deactivate();
-			document.body.appendChild(this.exitButton);
+			document.body.appendChild(this.tooltip);
 		}
 
 		private generateModalId(element: HTMLElement): string {
@@ -435,76 +620,54 @@ const EnhancedFontAnalyzer = (function () {
 			this.observer.observe(document.body, config);
 		}
 
-		public activate(): void {
-			this.isActive = true;
-			this.exitButton.style.display = 'block';
-			this.setupEventListeners();
-			this.setupMutationObserver();
+		private cleanupModal = (modalId: string): void => {
+			const modalInfo = this.activeModals.get(modalId);
+			if (modalInfo) {
+				const {modal, targetElement, highlightButton, isHighlighted} = modalInfo;
 
-			this.instructionTooltip = document.createElement('div');
-			this.instructionTooltip.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            font-size: 14px;
-            font-family: Segoe UI, Helvetica, Arial, sans-serif;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 16px;
-            border-radius: 4px;
-            z-index: 10003;
-        `;
-			this.instructionTooltip.textContent = 'Hover over text elements to see font information. Click to see details. Click multiple elements to compare fonts.';
-			document.body.appendChild(this.instructionTooltip);
-
-			const dismissInstructions = () => {
-				if (this.instructionTooltip && this.instructionTooltip.parentNode) {
-					this.instructionTooltip.remove();
-					this.instructionTooltip = null;
+				// Check if element is highlighted
+				if (isHighlighted) {
+					const trackId = targetElement.getAttribute('data-font-track-id');
+					if (trackId) {
+						this.cleanupTrackedElement(trackId);
+					}
 				}
-				document.removeEventListener('click', dismissInstructions);
-			};
 
-			document.addEventListener('click', dismissInstructions);
-			setTimeout(dismissInstructions, 3000);
-		}
+				// Remove modal-element association
+				targetElement.removeAttribute('data-modal-id');
 
-		public deactivate(): void {
-			// Clean up all modals and their associated elements
-			this.activeModals.forEach((modalInfo, modalId) => {
-				this.cleanupModal(modalId);
-			});
-			this.activeModals.clear();
-			// Clean up all tracked elements
-			this.trackedElements.forEach((_, trackId) => {
-				this.cleanupTrackedElement(trackId);
-			});
-			this.trackedElements.clear();
+				// Remove the modal
+				if (modal.parentNode) {
+					modal.parentNode.removeChild(modal);
+				}
 
-			// Clean up all modals
-			this.activeModals.forEach((_, modalId) => {
-				this.cleanupModal(modalId);
-			});
-			this.activeModals.clear();
-
-			// Reset z-index counter
-			this.topZIndex = this.baseZIndex;
-
-			// Remove UI elements
-			this.exitButton.style.display = 'none';
-			this.tooltip.style.display = 'none';
-
-			if (this.instructionTooltip && this.instructionTooltip.parentNode) {
-				this.instructionTooltip.remove();
-				this.instructionTooltip = null;
+				// Remove from active modals
+				this.activeModals.delete(modalId);
 			}
+		};
 
-			// Remove event listeners
-			this.removeEventListeners();
-			this.observer.disconnect();
-
-			this.isActive = false;
+		private createExitButton(): void {
+			this.exitButton = document.createElement('button');
+			this.exitButton.textContent = 'Cancel';
+			this.exitButton.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 8px;
+            border: none;
+            background: rgba(0, 0, 0, 0.8);
+			backdrop-filter: blur(16px);
+			padding: 8px;
+			border-radius: 4px;
+			font-size: 14px;
+			line-height: 1;
+            color: white;
+            cursor: pointer;
+            z-index: 10002;
+            display: none;
+        `;
+			this.exitButton.onclick = () => this.deactivate();
+			document.body.appendChild(this.exitButton);
 		}
 
 		private setupEventListeners(): void {
@@ -522,6 +685,13 @@ const EnhancedFontAnalyzer = (function () {
 
 			const target = e.target as HTMLElement;
 
+			if (this.debugConfig.logLevel === 'verbose') {
+				this.log('Mouse move event', {
+					target: (e.target as HTMLElement).tagName,
+					position: {x: e.pageX, y: e.pageY}
+				});
+			}
+
 			// Check if cursor is over any modal or exit button
 			if (this.exitButton.contains(target) ||
 				Array.from(this.activeModals.values()).some(modalInfo => modalInfo.modal.contains(target))) {
@@ -534,8 +704,8 @@ const EnhancedFontAnalyzer = (function () {
 				this.tooltip.textContent = `${metrics.name}`;
 				this.tooltip.style.display = 'block';
 
-				const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
-				const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+				const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
+				const scrollTop = window.scrollY || document.documentElement.scrollTop;
 
 				// Position tooltip with consistent offset
 				this.tooltip.style.left = `${e.pageX - scrollLeft + this.tooltipOffset.x}px`;
@@ -543,12 +713,19 @@ const EnhancedFontAnalyzer = (function () {
 			} else {
 				this.tooltip.style.display = 'none';
 			}
+
+			this.updateDebugPanel();
 		};
 
 		private handleClick = (e: MouseEvent): void => {
 			if (!this.isActive) return;
 
 			const target = e.target as HTMLElement;
+
+			this.log('Click event detected', {
+				target: (e.target as HTMLElement).tagName,
+				position: {x: e.pageX, y: e.pageY}
+			});
 
 			// Handle modal close button clicks
 			if (target.classList.contains('modal-close-btn')) {
@@ -588,7 +765,8 @@ const EnhancedFontAnalyzer = (function () {
 				this.activeModals.set(modalId, {
 					modal,
 					targetElement: target,
-					highlightButton
+					highlightButton,
+					isHighlighted: false
 				});
 
 				// Rest of modal creation code remains the same...
@@ -654,14 +832,16 @@ const EnhancedFontAnalyzer = (function () {
 				this.activeModals.set(modalId, {
 					modal,
 					targetElement: target,
-					highlightButton
+					highlightButton,
+					isHighlighted: false
 				});
 			}
+
+			this.updateDebugPanel();
 		};
 	}
 
 	const analyzer = {
-		categoryDetector: new FontCategoryDetector(),
 		hierarchyAnalyzer: new FontHierarchyAnalyzer(),
 		ui: new FontDetectorUI(),
 
@@ -699,5 +879,17 @@ const EnhancedFontAnalyzer = (function () {
 		}
 	};
 
-	return analyzer;
+	return {
+		hierarchyAnalyzer: new FontHierarchyAnalyzer(),
+		ui: new FontDetectorUI(),
+
+		setDebug(config: Partial<DebugConfig>): void {
+			this.ui.setDebugConfig(config);
+		},
+
+		analyzeInteractive(): void {
+			this.hierarchyAnalyzer.reset();
+			this.ui.activate();
+		},
+	};
 })();

@@ -419,63 +419,65 @@ const EnhancedFontAnalyzer = (function () {
 			this.createExitButton();
 		}
 
-		private createHighlightButton(element: HTMLElement, modalId: string): HTMLButtonElement {
-			const button = document.createElement('button');
-			const trackId = `font-track-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-			element.setAttribute('data-font-track-id', trackId);
-			element.setAttribute('data-modal-id', modalId);
+        private createHighlightButton(element: HTMLElement, modalId: string): HTMLButtonElement {
+            const button = document.createElement('button');
+            const trackId = `font-track-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+            element.setAttribute('data-font-track-id', trackId);
+            element.setAttribute('data-modal-id', modalId);
 
-			button.style.cssText = `
-                padding: 4px 8px;
-                margin-left: 8px;
-                border: none;
-                border-radius: 4px;
-                background: #f0f0f0;
-                cursor: pointer;
-                font-size: 12px;
-            `;
-			button.textContent = 'Highlight Element';
+            button.style.cssText = `
+        padding: 6px 12px;
+        margin: 0;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 4px;
+        background: #f0f0f0;
+        cursor: pointer;
+        font-size: 12px;
+        font-family: inherit;
+        white-space: nowrap;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    `;
+            button.textContent = 'Highlight Element';
 
-			let isProcessing = false; // Add debounce flag
-			let isHighlighted = false;
+            let isProcessing = false;
+            let isHighlighted = false;
 
-			button.addEventListener('click', async (e) => {
-				e.stopPropagation();
+            button.addEventListener('click', async (e) => {
+                e.stopPropagation();
 
-				// Prevent rapid clicking
-				if (isProcessing) return;
-				isProcessing = true;
+                if (isProcessing) return;
+                isProcessing = true;
 
-				try {
-					isHighlighted = !isHighlighted;
+                try {
+                    isHighlighted = !isHighlighted;
 
-					// Update button state
-					button.textContent = isHighlighted ? 'Remove Highlight' : 'Highlight Element';
-					button.style.background = isHighlighted ? '#2196F3' : '#f0f0f0';
-					button.style.color = isHighlighted ? 'white' : 'black';
+                    // Update button state with smooth transition
+                    button.textContent = isHighlighted ? 'Remove Highlight' : 'Highlight Element';
+                    button.style.background = isHighlighted ? '#2196F3' : '#f0f0f0';
+                    button.style.color = isHighlighted ? 'white' : 'black';
+                    button.style.borderColor = isHighlighted ? '#1976D2' : 'rgba(0, 0, 0, 0.1)';
 
-					// Update element highlight
-					this.highlightElement(element, isHighlighted);
+                    this.highlightElement(element, isHighlighted);
 
-					// Update modal state
-					const modalInfo = this.activeModals.get(modalId);
-					if (modalInfo) {
-						modalInfo.isHighlighted = isHighlighted;
-					}
+                    const modalInfo = this.activeModals.get(modalId);
+                    if (modalInfo) {
+                        modalInfo.isHighlighted = isHighlighted;
+                    }
 
-					// Force debug panel update
-					if (this.debugConfig.enabled) {
-						this.updateDebugPanel();
-					}
-				} finally {
-					// Small delay to prevent rapid clicking
-					await new Promise(resolve => setTimeout(resolve, 100));
-					isProcessing = false;
-				}
-			});
+                    if (this.debugConfig.enabled) {
+                        this.updateDebugPanel();
+                    }
+                } finally {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    isProcessing = false;
+                }
+            });
 
-			return button;
-		}
+            return button;
+        }
 
 		private createModal(id: string): HTMLDivElement {
 			const modal = document.createElement('div');
@@ -526,25 +528,34 @@ const EnhancedFontAnalyzer = (function () {
 			}
 		}
 
-		private createTooltip(): void {
-			this.tooltip = document.createElement('div');
-			this.tooltip.style.cssText = `
-            position: fixed;
-            background: rgba(0, 0, 0, 0.8);
-			backdrop-filter: blur(16px);
-            padding: 8px;
-            border: 0;
-            color: white;
-            font-family: Segoe UI, Helvetica, Arial, sans-serif;
-            font-size: 14px;
-            line-height: 1;
-            border-radius: 4px;
-            pointer-events: none;
-            z-index: 10000;
-            display: none;
-        `;
-			document.body.appendChild(this.tooltip);
-		}
+        private createTooltip(): void {
+            this.tooltip = document.createElement('div');
+            this.tooltip.style.cssText = `
+        position: fixed;
+        background: rgba(0, 0, 0, 0.8);
+        backdrop-filter: blur(16px);
+        padding: 8px;
+        border: 0;
+        color: white;
+        font-family: Segoe UI, Helvetica, Arial, sans-serif;
+        font-size: 14px;
+        line-height: 1;
+        border-radius: 4px;
+        pointer-events: none;
+        z-index: 10000;
+        display: none;
+        transform-origin: center center;
+        transform: scale(0.95);
+    `;
+            document.body.appendChild(this.tooltip);
+
+            // Add a small delay before applying the full scale to create a nice entry animation
+            this.tooltip.addEventListener('transitionrun', () => {
+                requestAnimationFrame(() => {
+                    this.tooltip.style.transform = 'scale(1)';
+                });
+            });
+        }
 
 		private generateModalId(element: HTMLElement): string {
 			// Create a unique ID based on element properties and position
@@ -625,42 +636,78 @@ const EnhancedFontAnalyzer = (function () {
 			document.removeEventListener('click', this.handleClick);
 		}
 
-		private handleMouseMove = (e: MouseEvent): void => {
-			if (!this.isActive) return;
+        private handleMouseMove = (e: MouseEvent): void => {
+            if (!this.isActive) return;
 
-			const target = e.target as HTMLElement;
+            const target = e.target as HTMLElement;
 
-			if (this.debugConfig.logLevel === 'verbose') {
-				this.log('Mouse move event', {
-					target: (e.target as HTMLElement).tagName,
-					position: {x: e.pageX, y: e.pageY}
-				});
-			}
+            if (this.debugConfig.logLevel === 'verbose') {
+                this.log('Mouse move event', {
+                    target: (e.target as HTMLElement).tagName,
+                    position: {x: e.pageX, y: e.pageY}
+                });
+            }
 
-			// Check if cursor is over any modal or exit button
-			if (this.exitButton.contains(target) ||
-				Array.from(this.activeModals.values()).some(modalInfo => modalInfo.modal.contains(target))) {
-				this.tooltip.style.display = 'none';
-				return;
-			}
+            // Check if cursor is over any modal or exit button
+            if (this.exitButton.contains(target) ||
+                Array.from(this.activeModals.values()).some(modalInfo => modalInfo.modal.contains(target))) {
+                this.tooltip.style.display = 'none';
+                return;
+            }
 
-			if (target && target.innerText) {
-				const metrics = analyzer.hierarchyAnalyzer.getElementFontMetrics(target);
-				this.tooltip.textContent = `${metrics.name}`;
-				this.tooltip.style.display = 'block';
+            if (target && target.innerText) {
+                const metrics = analyzer.hierarchyAnalyzer.getElementFontMetrics(target);
+                this.tooltip.textContent = `${metrics.name}`;
 
-				const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
-				const scrollTop = window.scrollY || document.documentElement.scrollTop;
+                // Make tooltip visible but hidden to calculate its dimensions
+                this.tooltip.style.visibility = 'hidden';
+                this.tooltip.style.display = 'block';
 
-				// Position tooltip with consistent offset
-				this.tooltip.style.left = `${e.pageX - scrollLeft + this.tooltipOffset.x}px`;
-				this.tooltip.style.top = `${e.pageY - scrollTop + this.tooltipOffset.y}px`;
-			} else {
-				this.tooltip.style.display = 'none';
-			}
+                // Get viewport and tooltip dimensions
+                const viewportWidth = document.documentElement.clientWidth;
+                const viewportHeight = document.documentElement.clientHeight;
+                const tooltipRect = this.tooltip.getBoundingClientRect();
+                const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
+                const scrollTop = window.scrollY || document.documentElement.scrollTop;
 
-			this.updateDebugPanel();
-		};
+                // Calculate proposed positions (default: bottom-right of cursor)
+                let proposedX = e.pageX - scrollLeft + this.tooltipOffset.x;
+                let proposedY = e.pageY - scrollTop + this.tooltipOffset.y;
+
+                // Check boundaries
+                const wouldOverflowRight = proposedX + tooltipRect.width > viewportWidth;
+                const wouldOverflowBottom = proposedY + tooltipRect.height > viewportHeight;
+
+                // Adjust horizontal position if needed
+                if (wouldOverflowRight) {
+                    proposedX = e.pageX - scrollLeft - tooltipRect.width - this.tooltipOffset.x;
+                }
+
+                // Adjust vertical position if needed
+                if (wouldOverflowBottom) {
+                    proposedY = e.pageY - scrollTop - tooltipRect.height - this.tooltipOffset.y;
+                }
+
+                // Ensure tooltip doesn't go off the left or top edge
+                proposedX = Math.max(this.tooltipOffset.x, proposedX);
+                proposedY = Math.max(this.tooltipOffset.y, proposedY);
+
+                // Position tooltip
+                this.tooltip.style.left = `${proposedX}px`;
+                this.tooltip.style.top = `${proposedY}px`;
+
+                // Add data attributes to enable CSS transitions
+                this.tooltip.setAttribute('data-position-x', wouldOverflowRight ? 'left' : 'right');
+                this.tooltip.setAttribute('data-position-y', wouldOverflowBottom ? 'top' : 'bottom');
+
+                // Make tooltip visible
+                this.tooltip.style.visibility = 'visible';
+            } else {
+                this.tooltip.style.display = 'none';
+            }
+
+            this.updateDebugPanel();
+        };
 
 		private handleClick = (e: MouseEvent): void => {
 			if (!this.isActive) return;
@@ -715,42 +762,46 @@ const EnhancedFontAnalyzer = (function () {
 				});
 
 				// Rest of modal creation code remains the same...
-				modal.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <div style="display: flex; align-items: center;">
-                        <p style="margin: 0; font-weight: bold;">Font Details</p>
-                    </div>
-                    <div style="display:flex; gap: 4px; align-items: center">
-                    <div id="highlight-btn" style="background: none; border: none; cursor: pointer; font-size: 18px;"></div>
-                    <button class="modal-close-btn" style="background: none; border: none; cursor: pointer; font-size: 18px;">×</button>
-					</div>
-				</div>
-                <div>
-                    <div style="font-weight: 600; margin-top: 8px;">Font Family:</div>
-                    <div style="margin-left: 0; margin-bottom: 8px; display: flex; align-items: center;">
-                        ${metrics.name}
-                    </div>
-                    <div style="font-weight: 600; margin-top: 8px;">Weight:</div>
-                    <div style="margin-left: 0; margin-bottom: 8px;">${metrics.weight}</div>
-                    <div style="font-weight: 600; margin-top: 8px;">Color:</div>
-                    <div style="margin-left: 0; margin-bottom: 8px;">
-						 <span style="background-color: ${metrics.color}; width: 10px; height:10px; display: block;"></span>${metrics.color}</div>
-                    <div style="font-weight: 600; margin-top: 8px;">Style:</div>
-                    <div style="margin-left: 0; margin-bottom: 8px;">${metrics.style}</div>
-                    <div style="font-weight: 600; margin-top: 8px;">Size:</div>
-                    <div style="margin-left: 0; margin-bottom: 8px;">${metrics.size}</div>
-                    <div style="font-weight: 600; margin-top: 8px;">Line Height:</div>
-                    <div style="margin-left: 0; margin-bottom: 8px;">${metrics.lineHeight}</div>
-                    <div style="font-weight: 600; margin-top: 8px;">Letter Spacing:</div>
-                    <div style="margin-left: 0; margin-bottom: 8px;">${metrics.letterSpacing}</div>
-                </div>
-            `;
+                modal.innerHTML = `
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <div style="display: flex; align-items: center;">
+            <p style="margin: 0; font-weight: bold;">Font Details</p>
+        </div>
+        <div style="display: flex; gap: 4px; align-items: center">
+            <!-- Changed to class instead of id for better practice -->
+            <div class="highlight-btn-container"></div>
+            <button class="modal-close-btn" style="background: none; border: none; cursor: pointer; font-size: 18px;">×</button>
+        </div>
+    </div>
+    <div>
+        <div style="font-weight: 600; margin-top: 8px;">Font Family:</div>
+        <div style="margin-left: 0; margin-bottom: 8px; display: flex; align-items: center;">
+            ${metrics.name}
+        </div>
+        <div style="font-weight: 600; margin-top: 8px;">Weight:</div>
+        <div style="margin-left: 0; margin-bottom: 8px;">${metrics.weight}</div>
+        <div style="font-weight: 600; margin-top: 8px;">Color:</div>
+        <div style="margin-left: 0; margin-bottom: 8px;">
+            <span style="background-color: ${metrics.color}; width: 10px; height:10px; display: block;"></span>${metrics.color}
+        </div>
+        <div style="font-weight: 600; margin-top: 8px;">Style:</div>
+        <div style="margin-left: 0; margin-bottom: 8px;">${metrics.style}</div>
+        <div style="font-weight: 600; margin-top: 8px;">Size:</div>
+        <div style="margin-left: 0; margin-bottom: 8px;">${metrics.size}</div>
+        <div style="font-weight: 600; margin-top: 8px;">Line Height:</div>
+        <div style="margin-left: 0; margin-bottom: 8px;">${metrics.lineHeight}</div>
+        <div style="font-weight: 600; margin-top: 8px;">Letter Spacing:</div>
+        <div style="margin-left: 0; margin-bottom: 8px;">${metrics.letterSpacing}</div>
+    </div>
+`;
 
-				// Add highlight button after font family
-				const fontFamilyDd = document.getElementById('highlight-btn');
-				if (fontFamilyDd) {
-					fontFamilyDd.appendChild(highlightButton);
-				}
+// Append highlight button to its container using querySelector instead of getElementById
+                const highlightBtnContainer = modal.querySelector('.highlight-btn-container');
+                if (highlightBtnContainer) {
+                    highlightBtnContainer.appendChild(highlightButton);
+                } else {
+                    console.warn('Could not find highlight button container');
+                }
 
 				// Position the modal with the same offset as tooltip
 				const windowWidth = document.documentElement.clientWidth;

@@ -1,49 +1,11 @@
-interface FontMetrics {
-	name: string;
-	weight: number;
-	style: string;
-	size: string;
-	color: string;
-	lineHeight: string;
-	letterSpacing: string;
-	category?: string;
-	loadTime?: number;
-	alternativeFonts?: string[];
-}
-
-interface FontHierarchyData {
-	tag: string;
-	fontMetrics: FontMetrics;
-	frequency: number;
-	children: FontHierarchyData[];
-}
-
-interface FontAnalysisReport {
-	hierarchy: FontHierarchyData[];
-	fontUsageStats?: Map<string, number>;
-}
-
-interface TrackedElement {
-	element: HTMLElement;
-	originalStyles: {
-		outline: string;
-		backgroundColor: string;
-	};
-}
-
-interface ModalInfo {
-	modal: HTMLDivElement;
-	targetElement: HTMLElement;
-	highlightButton: HTMLButtonElement;
-	isHighlighted?: boolean;
-}
-
-interface DebugConfig {
-	enabled: boolean;
-	logLevel: 'info' | 'debug' | 'verbose';
-	showDebugPanel: boolean;
-}
-
+import type {
+	FontMetrics,
+	FontHierarchyData,
+	FontAnalysisReport,
+	TrackedElement,
+	ModalInfo,
+	DebugConfig
+} from './types/index';
 const EnhancedFontAnalyzer = (function () {
 	'use strict';
 
@@ -878,3 +840,6 @@ const EnhancedFontAnalyzer = (function () {
 		},
 	};
 })();
+
+// Expose to window object
+(window as any).EnhancedFontAnalyzer = EnhancedFontAnalyzer;

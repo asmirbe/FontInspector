@@ -96,18 +96,22 @@
         <p class="small-text">Footer text with Comic Sans MS and very small font size.</p>
     </footer>
 
-    <script src="dist/bundle.js"></script>
+    <script src="../dist/bundle.js"></script>
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
+        // Attendre que le script soit complètement chargé
+        window.addEventListener('load', function () {
             try {
-                EnhancedFontAnalyzer.setDebug({
+                if (typeof window.EnhancedFontAnalyzer === 'undefined') {
+                    throw new Error('EnhancedFontAnalyzer not loaded properly');
+                }
+
+                window.EnhancedFontAnalyzer.setDebug({
                     enabled: true,
                     logLevel: 'verbose',
                     showDebugPanel: true
                 });
 
-                EnhancedFontAnalyzer.analyzeInteractive();
-
+                window.EnhancedFontAnalyzer.analyzeInteractive();
             } catch (e) {
                 console.error("Font analyzer error:", e);
             }

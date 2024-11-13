@@ -3,11 +3,12 @@
 		"target": "es5",
 		"module": "esnext",
 		"strict": true,
-		"esModuleInterop": true,
 		"skipLibCheck": true,
 		"forceConsistentCasingInFileNames": true,
 		"outDir": "./dist",
 		"rootDir": "./src",
+		"jsx": "react",
+		"esModuleInterop": true,
 		"moduleResolution": "node",
 		"lib": [
 			"es2015",

@@ -1,3 +1,5 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { createRoot } from 'react-dom/client';
 import type {
 	TrackedElement,
 	ModalInfo,
@@ -36,6 +38,11 @@ export class FontDetectorUI {
 		showDebugPanel: false
 	};
 	private debugPanel: DebugPanel | null = null;
+
+	constructor() {
+		this.createTooltip();
+		this.createExitButton();
+	}
 
 	private getDebugData() {
 		return {
@@ -212,11 +219,6 @@ export class FontDetectorUI {
 				this.updateDebugPanel();
 			}
 		}
-	}
-
-	constructor() {
-		this.createTooltip();
-		this.createExitButton();
 	}
 
 	private createHighlightButton(element: HTMLElement, modalId: string): HTMLButtonElement {

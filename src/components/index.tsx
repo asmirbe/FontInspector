@@ -118,6 +118,17 @@ const Modal: React.FC<{
 }> = ({ id, info, onClose, onBringToFront, onHighlight }) => {
 	const modalRef = useRef<HTMLDivElement>(null);
 
+	const handleClose = (e: React.MouseEvent) => {
+		e.stopPropagation(); // Stop event propagation
+		onClose(id);
+	};
+
+	const handleMouseDown = (e: React.MouseEvent) => {
+		if (!(e.target as HTMLElement).classList.contains('modal-close-btn')) {
+			onBringToFront(id);
+		}
+	};
+
 	return (
 		<div
 			ref={modalRef}
@@ -136,8 +147,10 @@ const Modal: React.FC<{
 				left: `${info.position.x}px`,
 				top: `${info.position.y}px`
 			}}
-			onMouseDown={() => onBringToFront(id)}
+			onMouseDown={handleMouseDown}
+			onClick={(e) => e.stopPropagation()} // Stop click propagation for the entire modal
 		>
+			{/* Rest of the Modal component remains the same */}
 			<div style={{
 				display: 'flex',
 				justifyContent: 'space-between',
@@ -156,7 +169,7 @@ const Modal: React.FC<{
 					/>
 					<button
 						className="modal-close-btn"
-						onClick={() => onClose(id)}
+						onClick={handleClose} // Use the new handleClose function
 						style={{
 							background: 'none',
 							border: 'none',

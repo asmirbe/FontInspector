@@ -191,39 +191,7 @@ export class FontDetectorUI {
 		return { x, y };
 	}
 
-	private handleClick(e: MouseEvent): void {
-		if (!this.state.isActive) return;
 
-		const target = e.target as HTMLElement;
-
-		// Ignore if clicking UI elements
-		if (target.closest('#font-detector-root')) return;
-
-		if (target && target.innerText) {
-			const metrics = this.hierarchyAnalyzer.getElementFontMetrics(target);
-			const modalId = this.generateModalId(target);
-
-			// Create new modal info
-			const newModal: ModalInfo = {
-				targetElement: target,
-				isHighlighted: false,
-				metrics,
-				position: {
-					x: e.clientX + this.tooltipOffset.x,
-					y: e.clientY + this.tooltipOffset.y
-				},
-				zIndex: this.state.topZIndex + 1
-			};
-
-			const updatedModals = new Map(this.state.modals);
-			updatedModals.set(modalId, newModal);
-
-			this.setState({
-				modals: updatedModals,
-				topZIndex: this.state.topZIndex + 1
-			});
-		}
-	}
 
 	private handleHighlightElement(element: HTMLElement, modalId: string, isHighlighting: boolean): void {
 		const trackId = element.getAttribute('data-font-track-id') || this.generateTrackId();
@@ -285,7 +253,50 @@ export class FontDetectorUI {
 		}
 	}
 
+	private handleClick(e: MouseEvent): void {
+		if (!this.state.isActive) return;
+
+		const target = e.target as HTMLElement;
+
+		// Check if clicking UI elements
+		if (target.closest('#font-detector-root')) {
+			// If clicking inside any existing modal, prevent creating a new one
+			if (target.closest('.font-detector-modal')) {
+				e.stopPropagation();
+				return;
+			}
+			return;
+		}
+
+		// Check if the target is valid for creating a modal
+		if (target && target.innerText && !target.closest('.modal-close-btn')) {
+			const metrics = this.hierarchyAnalyzer.getElementFontMetrics(target);
+			const modalId = this.generateModalId(target);
+
+			// Create new modal info
+			const newModal: ModalInfo = {
+				targetElement: target,
+				isHighlighted: false,
+				metrics,
+				position: {
+					x: e.clientX + this.tooltipOffset.x,
+					y: e.clientY + this.tooltipOffset.y
+				},
+				zIndex: this.state.topZIndex + 1
+			};
+
+			const updatedModals = new Map(this.state.modals);
+			updatedModals.set(modalId, newModal);
+
+			this.setState({
+				modals: updatedModals,
+				topZIndex: this.state.topZIndex + 1
+			});
+		}
+	}
+
 	private handleCloseModal(modalId: string): void {
+		// e.stopPropagation(); // Stop event propagation
 		const modalInfo = this.state.modals.get(modalId);
 		if (modalInfo && modalInfo.isHighlighted) {
 			const trackId = modalInfo.targetElement.getAttribute('data-font-track-id');

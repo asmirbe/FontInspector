@@ -48,10 +48,10 @@ const EnhancedFontAnalyzer = (function () {
 	'use strict';
 
 	class DebugPanel {
-		private panel: HTMLDivElement;
-		private content: HTMLDivElement;
+		private readonly panel: HTMLDivElement;
+		private readonly content: HTMLDivElement;
 		private updateInterval: number | null = null;
-		private counter: HTMLDivElement;
+		private readonly counter: HTMLDivElement;
 
 		constructor() {
 			this.panel = document.createElement('div');
@@ -275,35 +275,38 @@ const EnhancedFontAnalyzer = (function () {
 		};
 		private debugPanel: DebugPanel | null = null;
 
+		private getDebugData() {
+			return {
+				activeModals: Array.from(this.activeModals.entries()).map(([id, info]) => ({
+					id,
+					position: {
+						left: info.modal.style.left,
+						top: info.modal.style.top,
+						zIndex: info.modal.style.zIndex
+					},
+					targetElement: {
+						tagName: info.targetElement.tagName,
+						text: info.targetElement.innerText.substring(0, 50) + '...',
+						trackId: info.targetElement.getAttribute('data-font-track-id')
+					},
+					isHighlighted: info.isHighlighted
+				})),
+				trackedElements: Array.from(this.trackedElements.keys()),
+				topZIndex: this.topZIndex,
+				isActive: this.isActive
+			};
+		}
+
 		public setDebugConfig(config: Partial<DebugConfig>): void {
-			this.debugConfig = {...this.debugConfig, ...config};
+			this.debugConfig = { ...this.debugConfig, ...config };
 
 			if (this.debugConfig.showDebugPanel) {
 				if (!this.debugPanel) {
 					this.debugPanel = new DebugPanel();
-					// Add clear button functionality
 				}
 				this.debugPanel.show();
-				// Start auto-updates
-				this.debugPanel.startAutoUpdate(() => ({
-					activeModals: Array.from(this.activeModals.entries()).map(([id, info]) => ({
-						id,
-						position: {
-							left: info.modal.style.left,
-							top: info.modal.style.top,
-							zIndex: info.modal.style.zIndex
-						},
-						targetElement: {
-							tagName: info.targetElement.tagName,
-							text: info.targetElement.innerText.substring(0, 50) + '...',
-							trackId: info.targetElement.getAttribute('data-font-track-id')
-						},
-						isHighlighted: info.isHighlighted
-					})),
-					trackedElements: Array.from(this.trackedElements.keys()),
-					topZIndex: this.topZIndex,
-					isActive: this.isActive
-				}));
+				// Use the new getDebugData method
+				this.debugPanel.startAutoUpdate(() => this.getDebugData());
 			} else if (this.debugPanel) {
 				this.debugPanel.hide();
 			}
@@ -424,28 +427,8 @@ const EnhancedFontAnalyzer = (function () {
 
 		private updateDebugPanel(): void {
 			if (!this.debugPanel || !this.debugConfig.showDebugPanel) return;
-
-			const debugData = {
-				activeModals: Array.from(this.activeModals.entries()).map(([id, info]) => ({
-					id,
-					position: {
-						left: info.modal.style.left,
-						top: info.modal.style.top,
-						zIndex: info.modal.style.zIndex
-					},
-					targetElement: {
-						tagName: info.targetElement.tagName,
-						text: info.targetElement.innerText.substring(0, 50) + '...',
-						trackId: info.targetElement.getAttribute('data-font-track-id')
-					},
-					isHighlighted: info.isHighlighted
-				})),
-				trackedElements: Array.from(this.trackedElements.keys()),
-				topZIndex: this.topZIndex,
-				isActive: this.isActive
-			};
-
-			this.debugPanel.update(debugData);
+			// Use the new getDebugData method
+			this.debugPanel.update(this.getDebugData());
 		}
 
 		private cleanupTrackedElement(trackId: string): void {
@@ -623,7 +606,7 @@ const EnhancedFontAnalyzer = (function () {
 		private cleanupModal = (modalId: string): void => {
 			const modalInfo = this.activeModals.get(modalId);
 			if (modalInfo) {
-				const {modal, targetElement, highlightButton, isHighlighted} = modalInfo;
+				const {modal, targetElement, isHighlighted} = modalInfo;
 
 				// Check if element is highlighted
 				if (isHighlighted) {
@@ -775,32 +758,34 @@ const EnhancedFontAnalyzer = (function () {
                     <div style="display: flex; align-items: center;">
                         <p style="margin: 0; font-weight: bold;">Font Details</p>
                     </div>
-                    <button class="modal-close-btn"
-                        style="background: none; border: none; cursor: pointer; font-size: 18px;">×</button>
-                </div>
-                <dl style="margin: 0;">
-                    <dt style="font-weight: 600; margin-top: 8px;">Font Family:</dt>
-                    <dd style="margin-left: 0; margin-bottom: 8px; display: flex; align-items: center;">
+                    <div style="display:flex; gap: 4px; align-items: center">
+                    <div id="highlight-btn" style="background: none; border: none; cursor: pointer; font-size: 18px;"></div>
+                    <button class="modal-close-btn" style="background: none; border: none; cursor: pointer; font-size: 18px;">×</button>
+					</div>
+				</div>
+                <div>
+                    <div style="font-weight: 600; margin-top: 8px;">Font Family:</div>
+                    <div style="margin-left: 0; margin-bottom: 8px; display: flex; align-items: center;">
                         ${metrics.name}
-                    </dd>
-                    <dt style="font-weight: 600; margin-top: 8px;">Weight:</dt>
-                    <dd style="margin-left: 0; margin-bottom: 8px;">${metrics.weight}</dd>
-                    <dt style="font-weight: 600; margin-top: 8px;">Color:</dt>
-                    <dd style="margin-left: 0; margin-bottom: 8px;">
-						 <span style="background-color: ${metrics.color}; width: 10px; height:10px; display: block;"></span>${metrics.color}</dd>
-                    <dt style="font-weight: 600; margin-top: 8px;">Style:</dt>
-                    <dd style="margin-left: 0; margin-bottom: 8px;">${metrics.style}</dd>
-                    <dt style="font-weight: 600; margin-top: 8px;">Size:</dt>
-                    <dd style="margin-left: 0; margin-bottom: 8px;">${metrics.size}</dd>
-                    <dt style="font-weight: 600; margin-top: 8px;">Line Height:</dt>
-                    <dd style="margin-left: 0; margin-bottom: 8px;">${metrics.lineHeight}</dd>
-                    <dt style="font-weight: 600; margin-top: 8px;">Letter Spacing:</dt>
-                    <dd style="margin-left: 0; margin-bottom: 8px;">${metrics.letterSpacing}</dd>
-                </dl>
+                    </div>
+                    <div style="font-weight: 600; margin-top: 8px;">Weight:</div>
+                    <div style="margin-left: 0; margin-bottom: 8px;">${metrics.weight}</div>
+                    <div style="font-weight: 600; margin-top: 8px;">Color:</div>
+                    <div style="margin-left: 0; margin-bottom: 8px;">
+						 <span style="background-color: ${metrics.color}; width: 10px; height:10px; display: block;"></span>${metrics.color}</div>
+                    <div style="font-weight: 600; margin-top: 8px;">Style:</div>
+                    <div style="margin-left: 0; margin-bottom: 8px;">${metrics.style}</div>
+                    <div style="font-weight: 600; margin-top: 8px;">Size:</div>
+                    <div style="margin-left: 0; margin-bottom: 8px;">${metrics.size}</div>
+                    <div style="font-weight: 600; margin-top: 8px;">Line Height:</div>
+                    <div style="margin-left: 0; margin-bottom: 8px;">${metrics.lineHeight}</div>
+                    <div style="font-weight: 600; margin-top: 8px;">Letter Spacing:</div>
+                    <div style="margin-left: 0; margin-bottom: 8px;">${metrics.letterSpacing}</div>
+                </div>
             `;
 
 				// Add highlight button after font family
-				const fontFamilyDd = modal.querySelector('dd');
+				const fontFamilyDd = document.getElementById('highlight-btn');
 				if (fontFamilyDd) {
 					fontFamilyDd.appendChild(highlightButton);
 				}

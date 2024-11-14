@@ -1,35 +1,53 @@
 import React, { useRef } from 'react';
 import type { UIState, UIHandlers, ModalInfo } from '../types';
 import { createRoot } from 'react-dom/client';
+import { useTooltipPosition } from '../utils/useTooltipPosition';
 
-export const Tooltip: React.FC<{
+interface TooltipProps {
 	isActive: boolean;
 	visible: boolean;
 	content: string;
 	position: { x: number; y: number };
-}> = ({ isActive, visible, content, position }) => {
+}
+
+export const Tooltip: React.FC<TooltipProps> = ({
+	isActive,
+	visible,
+	content,
+	position
+}) => {
+	const { position: tooltipPosition, placement, tooltipRef } = useTooltipPosition(
+		content,
+		position
+	);
+
 	if (!isActive || !visible) return null;
 
 	return (
 		<div
+			ref={tooltipRef}
 			className="font-detector-tooltip"
 			style={{
 				position: 'fixed',
-				background: 'rgba(0, 0, 0, 0.8)',
+				background: '#262626cc',
 				backdropFilter: 'blur(16px)',
-				padding: '8px',
+				WebkitBackdropFilter: 'blur(16px)',
+				padding: '4px 8px',
 				border: 0,
+				backgroundBlendMode: 'luminosity',
 				color: 'white',
 				fontFamily: 'Segoe UI, Helvetica, Arial, sans-serif',
 				fontSize: '14px',
-				lineHeight: 1,
-				borderRadius: '4px',
+				lineHeight: '20px',
+				borderRadius: '6px',
 				pointerEvents: 'none',
 				zIndex: 10000,
 				left: '0',
 				top: '0',
-				transform: `translate(${position.x}px, ${position.y}px)`,
+				transform: `translate(${tooltipPosition.x}px, ${tooltipPosition.y}px)`,
+				whiteSpace: 'nowrap',
 			}}
+			data-placement={`${placement.vertical}-${placement.horizontal}`}
 		>
 			{content}
 		</div>
@@ -50,19 +68,22 @@ export const ExitButton: React.FC<{
 				position: 'fixed',
 				top: '20px',
 				right: '20px',
-				padding: '8px',
-				border: 'none',
-				background: 'rgba(0, 0, 0, 0.8)',
+				background: '#262626cc',
 				backdropFilter: 'blur(16px)',
-				borderRadius: '4px',
-				fontSize: '14px',
-				lineHeight: 1,
+				WebkitBackdropFilter: 'blur(16px)',
+				padding: '4px 8px',
+				border: 0,
+				backgroundBlendMode: 'luminosity',
 				color: 'white',
+				fontFamily: 'Segoe UI, Helvetica, Arial, sans-serif',
+				fontSize: '14px',
+				lineHeight: '20px',
+				borderRadius: '6px',
 				cursor: 'pointer',
 				zIndex: 10002
 			}}
 		>
-			Cancel
+			Exit Font Inspector
 		</button>
 	);
 };

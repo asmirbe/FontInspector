@@ -22,14 +22,19 @@ export class DebugPanel {
             right: 20px;
             width: 300px;
             max-height: 400px;
-            background: rgba(0, 0, 0, 0.9);
-            color: #fff;
             font-family: monospace;
-            padding: 10px;
-            border-radius: 4px;
-            z-index: 10005;
+            padding: 14px;
+            z-index: 2147483646;
             overflow-y: auto;
-            backdrop-filter: blur(16px);
+				background: #262626cc;
+				background-blend-mode: luminosity;
+				backdrop-filter: blur(16px);
+				border: 0;
+				color: white;
+				font-family: 'Segoe UI', Helvetica, Arial, sans-serif;
+				font-size: 14px;
+				line-height: 20px;
+				border-radius: 6px;
         `;
 
 		// Create React root
@@ -111,9 +116,7 @@ const DebugPanelComponent: React.FC<{
 				display: 'flex',
 				justifyContent: 'space-between',
 				alignItems: 'center',
-				borderBottom: '1px solid rgba(255, 255, 255, 0.5)',
 				marginBottom: '10px',
-				paddingBottom: '10px'
 			}}>
 				<div>Debug Panel</div>
 				<div style={{ fontSize: '12px' }}>

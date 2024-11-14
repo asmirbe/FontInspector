@@ -1,7 +1,5 @@
-import React from 'react';
-import { createRoot } from 'react-dom/client';
 import type { UIState, UIHandlers, DebugConfig, TrackedElement, ModalInfo } from '../types';
-import { ShadowContainer, FontDetectorApp } from '../components';
+import { ShadowContainer } from '../components';
 import { FontHierarchyAnalyzer } from './FontHierarchyAnalyzer';
 import { DebugPanel } from './DebugPanel';
 
@@ -121,7 +119,7 @@ export class FontDetectorUI {
 
 		if (target && target.innerText) {
 			const metrics = this.hierarchyAnalyzer.getElementFontMetrics(target);
-			const position = this.calculateTooltipPosition(e, metrics.name);
+			const position = this.calculateTooltipPosition(e);
 
 			this.setState({
 				tooltip: {
@@ -168,34 +166,10 @@ export class FontDetectorUI {
 		});
 	}
 
-	private calculateTooltipPosition(e: MouseEvent, content: string): { x: number; y: number } {
-		const viewportWidth = document.documentElement.clientWidth;
-		const viewportHeight = document.documentElement.clientHeight;
-
-		// Create temporary element to measure content width
-		const temp = document.createElement('div');
-		temp.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;';
-		temp.textContent = content;
-		document.body.appendChild(temp);
-		const contentWidth = temp.offsetWidth + 16; // Add padding
-		const contentHeight = temp.offsetHeight + 16;
-		document.body.removeChild(temp);
-
-		let x = e.clientX + this.tooltipOffset.x;
-		let y = e.clientY + this.tooltipOffset.y;
-
-		// Adjust for viewport boundaries
-		if (x + contentWidth > viewportWidth) {
-			x = e.clientX - contentWidth - this.tooltipOffset.x;
-		}
-		if (y + contentHeight > viewportHeight) {
-			y = e.clientY - contentHeight - this.tooltipOffset.y;
-		}
-
-		return { x, y };
+	private calculateTooltipPosition(e: MouseEvent): { x: number; y: number } {
+		// Basic initial position - actual positioning handled by Tooltip component
+		return { x: e.clientX, y: e.clientY };
 	}
-
-
 
 	private handleHighlightElement(element: HTMLElement, modalId: string, isHighlighting: boolean): void {
 		const trackId = element.getAttribute('data-font-track-id') || this.generateTrackId();

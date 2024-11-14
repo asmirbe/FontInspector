@@ -14,27 +14,6 @@ export class DebugPanel {
 	private updateInterval: number | null = null;
 	private currentData: any = { trackedElements: [] };
 
-	// Regex patterns for JSON syntax
-	private readonly patterns = {
-		key: /"([^"]+)":/g,
-		string: /: "([^"]+)"/g,
-		number: /: (-?\d+\.?\d*)/g,
-		boolean: /: (true|false)/g,
-		null: /: (null)/g,
-		brackets: /([{}\[\]])/g,
-		comma: /(,)/g
-	};
-
-	private readonly colors = {
-		key: '#f44',
-		string: '#7d8',
-		number: '#f60',
-		boolean: '#3bf',
-		null: '#3bf',
-		brackets: '#d4d4d4',
-		comma: '#d4d4d4'
-	};
-
 	constructor() {
 		this.panel = document.createElement('div');
 		this.panel.style.cssText = `
@@ -58,28 +37,10 @@ export class DebugPanel {
 		this.root.render(
 			<DebugPanelComponent
 				data={this.currentData}
-				patterns={this.patterns}
-				colors={this.colors}
 				formatDebugData={this.formatDebugData}
-				highlightJson={this.highlightJson}
 			/>
 		);
 	}
-
-	private highlightJson = (json: string): string => {
-		let highlighted = json;
-
-		highlighted = highlighted
-			.replace(this.patterns.key, `"<span style="color: ${this.colors.key}">$1</span>":`)
-			.replace(this.patterns.string, `: "<span style="color: ${this.colors.string}">$1</span>"`)
-			.replace(this.patterns.number, `: <span style="color: ${this.colors.number}">$1</span>`)
-			.replace(this.patterns.boolean, `: <span style="color: ${this.colors.boolean}">$1</span>`)
-			.replace(this.patterns.null, `: <span style="color: ${this.colors.null}">$1</span>`)
-			.replace(this.patterns.brackets, `<span style="color: ${this.colors.brackets}">$1</span>`)
-			.replace(this.patterns.comma, `<span style="color: ${this.colors.comma}">$1</span>`);
-
-		return highlighted;
-	};
 
 	private formatDebugData = (data: any): string => {
 		return JSON.stringify({
@@ -123,10 +84,7 @@ export class DebugPanel {
 		this.root.render(
 			<DebugPanelComponent
 				data={this.currentData}
-				patterns={this.patterns}
-				colors={this.colors}
 				formatDebugData={this.formatDebugData}
-				highlightJson={this.highlightJson}
 			/>
 		);
 	}
@@ -135,21 +93,17 @@ export class DebugPanel {
 // React component for the Debug Panel
 const DebugPanelComponent: React.FC<{
 	data: any;
-	patterns: any;
-	colors: any;
 	formatDebugData: (data: any) => string;
-	highlightJson: (json: string) => string;
-}> = ({ data, formatDebugData, highlightJson }) => {
+}> = ({ data, formatDebugData }) => {
 	const contentRef = useRef<HTMLPreElement>(null);
 	const [content, setContent] = useState('');
 
 	useEffect(() => {
 		const newContent = formatDebugData(data);
-		const newHighlighted = highlightJson(newContent);
-		if (newHighlighted !== content) {
-			setContent(newHighlighted);
+		if (newContent !== content) {
+			setContent(newContent);
 		}
-	}, [data, formatDebugData, highlightJson]);
+	}, [data, formatDebugData]);
 
 	return (
 		<>

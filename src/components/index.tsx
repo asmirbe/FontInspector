@@ -1,5 +1,6 @@
-import React, { useEffect, useRef } from 'react';
-import type { UIState, UIHandlers, ModalInfo, FontMetrics } from '../types';
+import React, { useRef } from 'react';
+import type { UIState, UIHandlers, ModalInfo } from '../types';
+import { createRoot } from 'react-dom/client';
 
 export const Tooltip: React.FC<{
 	isActive: boolean;
@@ -25,10 +26,9 @@ export const Tooltip: React.FC<{
 				borderRadius: '4px',
 				pointerEvents: 'none',
 				zIndex: 10000,
-				transform: 'scale(1)',
-				left: `${position.x}px`,
-				top: `${position.y}px`,
-				transition: 'transform 0.2s ease'
+				left: '0',
+				top: '0',
+				transform: `translate(${position.x}px, ${position.y}px)`,
 			}}
 		>
 			{content}
@@ -256,3 +256,72 @@ export const FontDetectorApp: React.FC<{
 		</>
 	);
 };
+
+export class ShadowContainer {
+	private container: HTMLDivElement;
+	private shadowRoot: ShadowRoot;
+	private rootContainer: HTMLDivElement;
+	private root: ReturnType<typeof createRoot> | null = null;
+
+	constructor() {
+		// Create container div
+		this.container = document.createElement('div');
+		this.container.id = 'font-detector-container';
+		this.container.style.cssText = `
+		all: initial;
+		`;
+
+		// Create shadow root
+		this.shadowRoot = this.container.attachShadow({ mode: 'open' });
+
+		// Create root container in shadow DOM
+		this.rootContainer = document.createElement('div');
+		this.rootContainer.id = 'font-detector-root';
+		this.rootContainer.style.cssText = `
+		all: initial
+		`;
+		// Add base styles to shadow DOM
+		const styleSheet = document.createElement('style');
+		styleSheet.textContent = `
+            :host {
+                all: initial;
+                pointer-events: none;
+            }
+        `;
+
+		this.shadowRoot.appendChild(styleSheet);
+		this.shadowRoot.appendChild(this.rootContainer);
+	}
+
+	public mount(): void {
+		document.body.appendChild(this.container);
+		this.setupRoot();
+	}
+
+	public unmount(): void {
+		if (this.container.parentNode) {
+			this.container.parentNode.removeChild(this.container);
+		}
+		this.root = null;
+	}
+
+	private setupRoot(): void {
+		// Create React root in shadow DOM
+		this.root = createRoot(this.rootContainer);
+	}
+
+	public render(state: UIState, handlers: UIHandlers): void {
+		if (this.root) {
+			this.root.render(
+				<FontDetectorApp
+					state={state}
+					handlers={handlers}
+				/>
+			);
+		}
+	}
+
+	public getShadowRoot(): ShadowRoot {
+		return this.shadowRoot;
+	}
+}

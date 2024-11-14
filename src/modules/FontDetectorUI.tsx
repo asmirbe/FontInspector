@@ -1,13 +1,13 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import type { UIState, UIHandlers, DebugConfig, TrackedElement, ModalInfo } from '../types';
-import { FontDetectorApp } from '../components';
+import { ShadowContainer, FontDetectorApp } from '../components';
 import { FontHierarchyAnalyzer } from './FontHierarchyAnalyzer';
 import { DebugPanel } from './DebugPanel';
 
 export class FontDetectorUI {
 	private state: UIState;
-	private root: ReturnType<typeof createRoot>;
+	private shadowContainer: ShadowContainer;
 	private baseZIndex: number = 10001;
 	private tooltipOffset = { x: 10, y: 10 };
 	private observer: MutationObserver;
@@ -35,11 +35,8 @@ export class FontDetectorUI {
 			topZIndex: this.baseZIndex
 		};
 
-		// Create root container
-		const container = document.createElement('div');
-		container.id = 'font-detector-root';
-		document.body.appendChild(container);
-		this.root = createRoot(container);
+		// Initialize shadow container
+		this.shadowContainer = new ShadowContainer();
 
 		// Setup observer
 		this.observer = new MutationObserver(this.handleMutations.bind(this));
@@ -55,6 +52,7 @@ export class FontDetectorUI {
 
 	public activate(): void {
 		this.setState({ isActive: true });
+		this.shadowContainer.mount();
 		this.setupEventListeners();
 		this.setupMutationObserver();
 		this.renderUI();
@@ -63,20 +61,7 @@ export class FontDetectorUI {
 	public deactivate(): void {
 		this.cleanup();
 		this.setState({ isActive: false });
-	}
-
-	public setDebugConfig(config: Partial<DebugConfig>): void {
-		this.debugConfig = { ...this.debugConfig, ...config };
-
-		if (this.debugConfig.showDebugPanel) {
-			if (!this.debugPanel) {
-				this.debugPanel = new DebugPanel();
-			}
-			this.debugPanel.show();
-			this.debugPanel.startAutoUpdate(() => this.getDebugData());
-		} else if (this.debugPanel) {
-			this.debugPanel.hide();
-		}
+		this.shadowContainer.unmount();
 	}
 
 	private getDebugData() {
@@ -97,6 +82,20 @@ export class FontDetectorUI {
 		};
 	}
 
+	public setDebugConfig(config: Partial<DebugConfig>): void {
+		this.debugConfig = { ...this.debugConfig, ...config };
+
+		if (this.debugConfig.showDebugPanel) {
+			if (!this.debugPanel) {
+				this.debugPanel = new DebugPanel();
+			}
+			this.debugPanel.show();
+			this.debugPanel.startAutoUpdate(() => this.getDebugData());
+		} else if (this.debugPanel) {
+			this.debugPanel.hide();
+		}
+	}
+
 	private setupEventListeners(): void {
 		document.addEventListener('mousemove', this.handleMouseMove);
 		document.addEventListener('click', this.handleClick);
@@ -105,6 +104,42 @@ export class FontDetectorUI {
 	private removeEventListeners(): void {
 		document.removeEventListener('mousemove', this.handleMouseMove);
 		document.removeEventListener('click', this.handleClick);
+	}
+
+	private handleMouseMove(e: MouseEvent): void {
+		if (!this.state.isActive) return;
+
+		const target = e.target as HTMLElement;
+
+		// Ignore if over UI elements
+		if (this.isInsideShadowDOM(target)) {
+			this.setState({
+				tooltip: { ...this.state.tooltip, visible: false }
+			});
+			return;
+		}
+
+		if (target && target.innerText) {
+			const metrics = this.hierarchyAnalyzer.getElementFontMetrics(target);
+			const position = this.calculateTooltipPosition(e, metrics.name);
+
+			this.setState({
+				tooltip: {
+					visible: true,
+					content: metrics.name,
+					position
+				}
+			});
+		} else {
+			this.setState({
+				tooltip: { ...this.state.tooltip, visible: false }
+			});
+		}
+	}
+
+	private isInsideShadowDOM(element: HTMLElement): boolean {
+		return element.closest('#font-detector-container') !== null ||
+			element.getRootNode() === this.shadowContainer.getShadowRoot();
 	}
 
 	private setupMutationObserver(): void {
@@ -131,37 +166,6 @@ export class FontDetectorUI {
 				});
 			}
 		});
-	}
-
-	private handleMouseMove(e: MouseEvent): void {
-		if (!this.state.isActive) return;
-
-		const target = e.target as HTMLElement;
-
-		// Ignore if over UI elements
-		if (target.closest('#font-detector-root')) {
-			this.setState({
-				tooltip: { ...this.state.tooltip, visible: false }
-			});
-			return;
-		}
-
-		if (target && target.innerText) {
-			const metrics = this.hierarchyAnalyzer.getElementFontMetrics(target);
-			const position = this.calculateTooltipPosition(e, metrics.name);
-
-			this.setState({
-				tooltip: {
-					visible: true,
-					content: metrics.name,
-					position
-				}
-			});
-		} else {
-			this.setState({
-				tooltip: { ...this.state.tooltip, visible: false }
-			});
-		}
 	}
 
 	private calculateTooltipPosition(e: MouseEvent, content: string): { x: number; y: number } {
@@ -377,11 +381,6 @@ export class FontDetectorUI {
 			onHighlightElement: this.handleHighlightElement
 		};
 
-		this.root.render(
-			<FontDetectorApp
-				state={this.state}
-				handlers={handlers}
-			/>
-		);
+		this.shadowContainer.render(this.state, handlers);
 	}
 }

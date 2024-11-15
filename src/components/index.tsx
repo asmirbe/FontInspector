@@ -1,14 +1,8 @@
 import React, { useRef } from 'react';
-import type { UIState, UIHandlers, ModalInfo } from '../types';
+import type { UIState, UIHandlers, ModalInfo, TooltipProps, ModalProps } from '../types';
 import { createRoot } from 'react-dom/client';
 import { useTooltipPosition } from '../utils/useTooltipPosition';
-
-interface TooltipProps {
-	isActive: boolean;
-	visible: boolean;
-	content: string;
-	position: { x: number; y: number };
-}
+import { useModalPosition } from '../utils/useModalPosition';
 
 export const Tooltip: React.FC<TooltipProps> = ({
 	isActive,
@@ -109,7 +103,6 @@ const HighlightButton: React.FC<{
 			fontSize: '12px',
 			fontFamily: 'inherit',
 			whiteSpace: 'nowrap',
-			transition: 'all 0.2s ease'
 		}}
 	>
 		{isHighlighted ? 'Remove Highlight' : 'Highlight Element'}
@@ -130,17 +123,15 @@ const MetricsRow: React.FC<{
 	</>
 );
 
-const Modal: React.FC<{
-	id: string;
-	info: ModalInfo;
-	onClose: (id: string) => void;
-	onBringToFront: (id: string) => void;
-	onHighlight: (element: HTMLElement, modalId: string, isHighlighting: boolean) => void;
-}> = ({ id, info, onClose, onBringToFront, onHighlight }) => {
+export const Modal: React.FC<ModalProps> = ({ id, info, onClose, onBringToFront, onHighlight }) => {
 	const modalRef = useRef<HTMLDivElement>(null);
+	const { position } = useModalPosition({
+		initialPosition: info.position,
+		modalRef
+	});
 
 	const handleClose = (e: React.MouseEvent) => {
-		e.stopPropagation(); // Stop event propagation
+		e.stopPropagation();
 		onClose(id);
 	};
 
@@ -158,30 +149,30 @@ const Modal: React.FC<{
 				position: 'absolute',
 				background: 'white',
 				padding: '16px',
-				borderRadius: '4px',
-				boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
-				fontFamily: 'Segoe UI, Helvetica, Arial, sans-serif',
+				borderRadius: '8px',
+				boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+				fontFamily: 'system-ui, sans-serif',
 				zIndex: info.zIndex,
 				maxWidth: '300px',
 				minWidth: '250px',
-				border: '1px solid rgba(0, 0, 0, 0.1)',
-				left: `${info.position.x}px`,
-				top: `${info.position.y}px`
+				left: `${position.x}px`,
+				top: `${position.y}px`
 			}}
-			onMouseDown={handleMouseDown}
-			onClick={(e) => e.stopPropagation()} // Stop click propagation for the entire modal
+			onMouseDown={() => onBringToFront(id)}
+			onClick={(e) => e.stopPropagation()}
 		>
-			{/* Rest of the Modal component remains the same */}
 			<div style={{
 				display: 'flex',
 				justifyContent: 'space-between',
 				alignItems: 'center',
-				marginBottom: '10px'
+				marginBottom: '12px',
+				borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
+				paddingBottom: '8px'
 			}}>
 				<div style={{ display: 'flex', alignItems: 'center' }}>
-					<p style={{ margin: 0, fontWeight: 'bold' }}>Font Details</p>
+					<p style={{ margin: 0, fontWeight: 'bold', fontSize: '16px' }}>Font Details</p>
 				</div>
-				<div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+				<div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
 					<HighlightButton
 						modalId={id}
 						element={info.targetElement}
@@ -190,12 +181,20 @@ const Modal: React.FC<{
 					/>
 					<button
 						className="modal-close-btn"
-						onClick={handleClose} // Use the new handleClose function
+						onClick={handleClose}
 						style={{
 							background: 'none',
 							border: 'none',
 							cursor: 'pointer',
-							fontSize: '18px'
+							fontSize: '20px',
+							color: '#666',
+							padding: '4px',
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'center',
+							width: '24px',
+							height: '24px',
+							borderRadius: '4px',
 						}}
 					>
 						×
@@ -213,10 +212,12 @@ const Modal: React.FC<{
 						<span
 							style={{
 								backgroundColor: info.metrics.color,
-								width: '10px',
-								height: '10px',
+								width: '12px',
+								height: '12px',
 								display: 'inline-block',
-								marginRight: '5px'
+								marginRight: '8px',
+								borderRadius: '2px',
+								border: '1px solid rgba(0, 0, 0, 0.1)'
 							}}
 						/>
 					}

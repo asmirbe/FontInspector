@@ -11,6 +11,13 @@ export interface FontMetrics {
     alternativeFonts?: string[];
 }
 
+export interface TooltipProps {
+	isActive: boolean;
+	visible: boolean;
+	content: string;
+	position: { x: number; y: number };
+}
+
 export interface FontHierarchyData {
     tag: string;
     fontMetrics: FontMetrics;
@@ -73,4 +80,12 @@ export interface UIHandlers {
 	onCloseModal: (id: string) => void;
 	onBringModalToFront: (id: string) => void;
 	onHighlightElement: (element: HTMLElement, modalId: string, isHighlighting: boolean) => void;
+}
+
+export interface ModalProps {
+	id: string;
+	info: ModalInfo;
+	onClose: (id: string) => void;
+	onBringToFront: (id: string) => void;
+	onHighlight: (element: HTMLElement, modalId: string, isHighlighting: boolean) => void;
 }

@@ -236,6 +236,12 @@ export class FontDetectorUI {
 
 		const target = e.target as HTMLElement;
 
+		// Stop event propagation and prevent default behavior
+		if (target && target.innerText) {
+			e.preventDefault();
+			e.stopPropagation();
+		}
+
 		// Check if clicking UI elements
 		if (target.closest('#font-detector-root')) {
 			// If clicking inside any existing modal, prevent creating a new one

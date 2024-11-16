@@ -1,14 +1,16 @@
 export interface FontMetrics {
-    name: string;
-    weight: number;
-    style: string;
-    size: string;
-    color: string;
-    lineHeight: string;
-    letterSpacing: string;
-    category?: string;
-    loadTime?: number;
-    alternativeFonts?: string[];
+	name: string;
+	weight: number;
+	style: string;
+	size: string;
+	color: string;
+	lineHeight: string;
+	letterSpacing: string;
+	category?: string;
+	loadTime?: number;
+	alternativeFonts?: string[];
+	isPseudoElement?: boolean;
+	pseudoType?: '::before' | '::after';
 }
 
 export interface TooltipProps {
@@ -43,6 +45,10 @@ export interface ModalInfo {
 	isHighlighted: boolean;
 	metrics: FontMetrics;
 	position: {
+		x: number;
+		y: number;
+	};
+	clickPosition: {
 		x: number;
 		y: number;
 	};

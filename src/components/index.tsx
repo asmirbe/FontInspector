@@ -116,7 +116,7 @@ const MetricsRow: React.FC<{
 }> = ({ label, value, customContent }) => (
 	<>
 		<div style={{ fontWeight: 600, marginTop: '8px' }}>{label}</div>
-		<div style={{ marginLeft: 0, marginBottom: '8px', display: 'flex', alignItems: 'center' }}>
+		<div style={{ display: 'flex', alignItems: 'center' }}>
 			{customContent}
 			{value}
 		</div>
@@ -127,7 +127,9 @@ export const Modal: React.FC<ModalProps> = ({ id, info, onClose, onBringToFront,
 	const modalRef = useRef<HTMLDivElement>(null);
 	const { position } = useModalPosition({
 		initialPosition: info.position,
-		modalRef
+		modalRef,
+		padding: 20,
+		clickPosition: info.clickPosition // Pass the original click position
 	});
 
 	const handleClose = (e: React.MouseEvent) => {
@@ -156,9 +158,10 @@ export const Modal: React.FC<ModalProps> = ({ id, info, onClose, onBringToFront,
 				maxWidth: '300px',
 				minWidth: '250px',
 				left: `${position.x}px`,
-				top: `${position.y}px`
+				top: `${position.y}px`,
+				transition: 'transform 0.2s ease, opacity 0.2s ease',
 			}}
-			onMouseDown={() => onBringToFront(id)}
+			onMouseDown={handleMouseDown}
 			onClick={(e) => e.stopPropagation()}
 		>
 			<div style={{

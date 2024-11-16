@@ -68,11 +68,11 @@ export class FontHierarchyAnalyzer {
 		}
 	}
 
-	public getElementFontMetrics(element: HTMLElement): FontMetrics {
-		const style = window.getComputedStyle(element);
+	public getElementFontMetrics(element: HTMLElement, pseudoElement?: '::before' | '::after'): FontMetrics {
+		const style = window.getComputedStyle(element, pseudoElement);
 		const rawFontFamily = style.fontFamily.split(',')[0].trim();
 
-		return {
+		const metrics: FontMetrics = {
 			name: this.standardizeFontName(rawFontFamily),
 			weight: parseInt(style.fontWeight),
 			style: style.fontStyle,
@@ -81,6 +81,13 @@ export class FontHierarchyAnalyzer {
 			lineHeight: style.lineHeight,
 			letterSpacing: style.letterSpacing
 		};
+
+		if (pseudoElement) {
+			metrics.isPseudoElement = true;
+			metrics.pseudoType = pseudoElement;
+		}
+
+		return metrics;
 	}
 
 	public getPrimaryFont(): string {

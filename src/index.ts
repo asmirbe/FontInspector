@@ -1,27 +1,37 @@
-import type {
-	DebugConfig
-} from './types';
-
 import { FontHierarchyAnalyzer } from './modules/FontHierarchyAnalyzer';
-import { FontDetectorUI } from './modules/FontDetectorUI';
+import { activate as activateFontDetectorUI } from './modules/FontDetectorUI';
 
 const EnhancedFontAnalyzer = (function () {
 	'use strict';
 
+	let isAnalyzing = false;
+
 	return {
 		hierarchyAnalyzer: new FontHierarchyAnalyzer(),
-		ui: new FontDetectorUI(),
+		analyzeInteractive: function () {
+			if (isAnalyzing) {
+				console.warn('Font analyzer is already active');
+				return;
+			}
 
-		setDebug(config: Partial<DebugConfig>): void {
-			this.ui.setDebugConfig(config);
+			console.log('Activating font detector...');
+			isAnalyzing = true;
+			activateFontDetectorUI();
 		},
-
-		analyzeInteractive(): void {
-			this.hierarchyAnalyzer.reset();
-			this.ui.activate();
-		},
+		isActive: function () {
+			return isAnalyzing;
+		}
 	};
 })();
 
-// Expose to window object
+// Make it available globally
 (window as any).EnhancedFontAnalyzer = EnhancedFontAnalyzer;
+
+// Add a debug function to help troubleshoot
+(window as any).debugFontAnalyzer = () => {
+	console.log('EnhancedFontAnalyzer status:', {
+		isDefined: typeof window.EnhancedFontAnalyzer !== 'undefined',
+		isActive: window.EnhancedFontAnalyzer?.isActive(),
+		hierarchyAnalyzer: window.EnhancedFontAnalyzer?.hierarchyAnalyzer
+	});
+};

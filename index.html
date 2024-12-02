@@ -139,7 +139,6 @@
 				font-family: "Arial", sans-serif;
 				font-size: 16px;
 				background: linear-gradient(45deg, #ff0000, #00ff00, #0000ff);
-				-webkit-background-clip: text;
 				color: transparent;
 			}
 		</style>
@@ -190,22 +189,19 @@
 			<p class="small-text">Footer text with Comic Sans MS and very small font size.</p>
 		</footer>
 
-		<script src="../dist/bundle.js"></script>
+		<script type="module" src="/src/index.ts"></script>
 		<script>
-			// Attendre que le script soit complètement chargé
 			window.addEventListener("load", function () {
 				try {
 					if (typeof window.EnhancedFontAnalyzer === "undefined") {
 						throw new Error("EnhancedFontAnalyzer not loaded properly");
 					}
 
-					window.EnhancedFontAnalyzer.setDebug({
-						enabled: true,
-						logLevel: "verbose",
-						showDebugPanel: true,
-					});
-
+					console.log("Initializing EnhancedFontAnalyzer...");
 					window.EnhancedFontAnalyzer.analyzeInteractive();
+
+					// Debug check
+					window.debugFontAnalyzer();
 				} catch (e) {
 					console.error("Font analyzer error:", e);
 				}

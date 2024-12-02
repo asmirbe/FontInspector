@@ -1,31 +1,24 @@
 {
-  "name": "enhanced-font-analyzer",
-  "version": "1.0.0",
-  "main": "dist/bundle.js",
-  "scripts": {
-    "clean": "rimraf dist",
-    "build": "npm run clean && rollup -c",
-    "build:prod": "npm run clean && rollup -c --environment NODE_ENV:production",
-    "watch": "rollup -c -w",
-    "type-check": "tsc --noEmit"
-  },
-  "type": "module",
-  "devDependencies": {
-    "@rollup/plugin-commonjs": "^28.0.1",
-    "@rollup/plugin-node-resolve": "^15.3.0",
-    "@rollup/plugin-replace": "^6.0.1",
-    "@rollup/plugin-terser": "^0.4.4",
-    "@rollup/plugin-typescript": "^12.1.1",
-    "rimraf": "^6.0.1",
-    "rollup": "^4.26.0",
-    "rollup-plugin-cleanup": "^3.2.1",
-    "tslib": "^2.8.1",
-    "typescript": "^5.6.3"
-  },
-  "dependencies": {
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
-  }
+	"name": "enhanced-font-analyzer",
+	"version": "1.0.0",
+	"main": "dist/bundle.js",
+	"scripts": {
+		"dev": "vite",
+		"build": "vite build",
+		"type-check": "tsc --noEmit"
+	},
+	"type": "module",
+	"devDependencies": {
+		"rollup-plugin-cleanup": "^3.2.1",
+		"terser": "^5.36.0",
+		"tslib": "^2.8.1",
+		"typescript": "^5.6.3",
+		"vite": "^6.0.2"
+	},
+	"dependencies": {
+		"@types/react": "^18.3.12",
+		"@types/react-dom": "^18.3.1",
+		"react": "^18.3.1",
+		"react-dom": "^18.3.1"
+	}
 }

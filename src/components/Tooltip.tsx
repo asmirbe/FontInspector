@@ -20,6 +20,7 @@ export const Tooltip: React.FC<TooltipProps> = ({ metrics, position }) => {
 			fontFamily: 'Segoe UI, Helvetica, Arial, sans-serif',
 			fontSize: '14px',
 			lineHeight: '1',
+			whiteSpace: 'nowrap',
 			borderRadius: '4px',
 			pointerEvents: 'none',
 			zIndex: 10000,

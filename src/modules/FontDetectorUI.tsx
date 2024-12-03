@@ -3,17 +3,18 @@ import type { TrackedElement, ModalInfo, FontMetrics } from '../types';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
 
-import { FontHierarchyAnalyzer } from './FontHierarchyAnalyzer';
-import { Tooltip } from '../components/Tooltips';
+import FontInspector from './CoreForeInspector';
+import { Tooltip } from '../components/Tooltip';
 import { Modal } from '../components/Modal';
 
 const FontDetectorUI: React.FC = () => {
-	// Start with isActive true since we want it to activate immediately when mounted
 	const [isActive, setIsActive] = useState(true);
 	const [tooltipData, setTooltipData] = useState<{ metrics: FontMetrics | null, position: { x: number, y: number } }>({ metrics: null, position: { x: 0, y: 0 } });
-	const [modals, setModals] = useState<Map<string, ModalInfo>>(new Map());
+	const [modals, setModals] = useState<Map<string, ModalInfo & { zIndex: number }>>(new Map());
 	const [trackedElements, setTrackedElements] = useState<Map<string, TrackedElement>>(new Map());
-	const hierarchyAnalyzer = useRef(new FontHierarchyAnalyzer());
+	const fontInspector = useRef(new FontInspector());
+	const baseZIndex = 10001;
+	const [topZIndex, setTopZIndex] = useState(baseZIndex);
 
 	const handleMouseMove = useCallback((e: MouseEvent) => {
 		if (!isActive) return;
@@ -40,7 +41,7 @@ const FontDetectorUI: React.FC = () => {
 		}
 
 		if (target && target.innerText) {
-			const metrics = hierarchyAnalyzer.current.getElementFontMetrics(target);
+			const metrics = fontInspector.current.getElementFontMetrics(target);
 			if (metrics) {
 				setTooltipData({
 					metrics,
@@ -59,22 +60,24 @@ const FontDetectorUI: React.FC = () => {
 
 		const target = e.target as HTMLElement;
 		if (target && target.innerText) {
-			const metrics = hierarchyAnalyzer.current.getElementFontMetrics(target);
+			const metrics = fontInspector.current.getElementFontMetrics(target);
 			if (metrics) {
 				const modalId = `modal-${Date.now()}`;
 				setModals(prevModals => {
 					const newModals = new Map(prevModals);
+					setTopZIndex(prev => prev + 1);
 					newModals.set(modalId, {
 						metrics,
 						position: { x: e.clientX + 10, y: e.clientY + 10 },
 						targetElement: target,
-						isHighlighted: false
+						isHighlighted: false,
+						zIndex: topZIndex + 1
 					});
 					return newModals;
 				});
 			}
 		}
-	}, [isActive]);
+	}, [isActive, topZIndex]);
 
 	const handleMouseLeave = useCallback(() => {
 		setTooltipData({ metrics: null, position: { x: 0, y: 0 } });
@@ -91,7 +94,7 @@ const FontDetectorUI: React.FC = () => {
 			document.removeEventListener('click', handleClick);
 		}
 
-		hierarchyAnalyzer.current.reset();
+		fontInspector.current.reset();
 		return () => {
 			document.removeEventListener('mousemove', handleMouseMove);
 			document.removeEventListener('mouseleave', handleMouseLeave);
@@ -100,52 +103,125 @@ const FontDetectorUI: React.FC = () => {
 	}, [isActive, handleMouseMove, handleMouseLeave, handleClick]);
 
 	const deactivate = () => {
+		cleanupHighlights();
 		setIsActive(false);
 		setTooltipData({ metrics: null, position: { x: 0, y: 0 } });
 		setModals(new Map());
 		setTrackedElements(new Map());
 	};
 
-	const highlightElement = (element: HTMLElement, isHighlighted: boolean) => {
-		const trackId = element.getAttribute('data-font-track-id');
-		if (!trackId) return;
-
-		if (isHighlighted) {
-			if(!trackedElements.has(trackId)) {
-				const computedStyle = window.getComputedStyle(element);
-				const trackedElement: TrackedElement = {
-					element,
-					originalStyles: {
-						outline: computedStyle.outline,
-						backgroundColor: computedStyle.backgroundColor,
-					}
-				};
-
-				// Apply highlight effect
-				element.style.outline = '2px solid #2196F3';
-				element.style.backgroundColor = 'rgba(33, 150, 243, 0.1)';
-
-				trackedElements.set(trackId, trackedElement);
-			}
-		} else {
-			const tracked = trackedElements.get(trackId);
-			if (tracked) {
-				element.style.outline = tracked.originalStyles.outline;
-				element.style.backgroundColor = tracked.originalStyles.backgroundColor;
-				trackedElements.delete(trackId);
-			}
+	const generateTrackId = useCallback((element: HTMLElement): string => {
+		// Generate a unique ID if one doesn't exist
+		let trackId = element.getAttribute('data-font-track-id');
+		if (!trackId) {
+			trackId = `font-track-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+			element.setAttribute('data-font-track-id', trackId);
 		}
-	};
+		return trackId;
+	}, []);
+
+	const highlightElement = useCallback(
+		(element: HTMLElement, isHighlighting: boolean) => {
+			const trackId = generateTrackId(element);
+
+			setTrackedElements((prev) => {
+				const newTrackedElements = new Map(prev);
+
+				if (isHighlighting) {
+					// Add only if not already tracked
+					if (!newTrackedElements.has(trackId)) {
+						const computedStyle = window.getComputedStyle(element);
+						const trackedElement: TrackedElement = {
+							element,
+							originalStyles: {
+								outline: computedStyle.outline,
+								backgroundColor: computedStyle.backgroundColor,
+							},
+						};
+
+						// Apply highlight effect
+						element.style.outline = '2px solid #2196F3';
+						element.style.backgroundColor = 'rgba(33, 150, 243, 0.1)';
+
+						newTrackedElements.set(trackId, trackedElement);
+						console.log(`Added element with trackId: ${trackId}`);
+					}
+				} else {
+					// Remove if currently tracked
+					if (newTrackedElements.has(trackId)) {
+						const tracked = newTrackedElements.get(trackId);
+						if (tracked) {
+							element.style.outline = tracked.originalStyles.outline;
+							element.style.backgroundColor = tracked.originalStyles.backgroundColor;
+						}
+						newTrackedElements.delete(trackId);
+						console.log(`Removed element with trackId: ${trackId}`);
+					}
+				}
+
+				return newTrackedElements;
+			});
+		},
+		[generateTrackId]
+	);
+
+	const toggleHighlight = useCallback(
+		(modalId: string) => {
+			setModals((prev) => {
+				const newModals = new Map(prev);
+				const modalInfo = newModals.get(modalId);
+
+				if (modalInfo) {
+					const newIsHighlighted = !modalInfo.isHighlighted;
+					highlightElement(modalInfo.targetElement, newIsHighlighted);
+
+					newModals.set(modalId, {
+						...modalInfo,
+						isHighlighted: newIsHighlighted,
+					});
+					console.log(`Toggled highlight for modalId: ${modalId}, isHighlighted: ${newIsHighlighted}`);
+				}
+
+				return newModals;
+			});
+		},
+		[highlightElement]
+	);
+
+	const cleanupHighlights = useCallback(() => {
+		console.log('Cleaning up highlights');
+		trackedElements.forEach((tracked) => {
+			tracked.element.style.outline = tracked.originalStyles.outline;
+			tracked.element.style.backgroundColor = tracked.originalStyles.backgroundColor;
+			tracked.element.removeAttribute('data-font-track-id');
+		});
+		setTrackedElements(new Map());
+	}, [trackedElements]);
+
+	const bringToFront = useCallback((modalId: string) => {
+		setModals(prevModals => {
+			const newModals = new Map(prevModals);
+			const modal = newModals.get(modalId);
+			if (modal) {
+				const highestZIndex = Math.max(...Array.from(prevModals.values()).map(m => m.zIndex));
+				if (modal.zIndex < highestZIndex) {
+					setTopZIndex(highestZIndex + 1);
+					modal.zIndex = highestZIndex + 1;
+				}
+			}
+			return newModals;
+		});
+	}, []);
 
 	return (
 		<>
 			{isActive && (
 				<>
-					<pre>{JSON.stringify(trackedElements)}</pre>
 					<Tooltip metrics={tooltipData.metrics} position={tooltipData.position} />
 					{Array.from(modals.entries()).map(([id, modalInfo]) => (
 						<Modal
 							key={id}
+							modalId={id}
 							metrics={modalInfo.metrics}
 							position={modalInfo.position}
 							targetElement={modalInfo.targetElement}
@@ -153,21 +229,15 @@ const FontDetectorUI: React.FC = () => {
 								setModals(prev => {
 									const newModals = new Map(prev);
 									newModals.delete(id);
+									console.log('Closing modal', id);
+									highlightElement(modalInfo.targetElement, false);
 									return newModals;
 								});
 							}}
-							onHighlight={() => {
-								setModals(prev => {
-									const newModals = new Map(prev);
-									const modal = newModals.get(id);
-									if (modal) {
-										modal.isHighlighted = !modal.isHighlighted;
-										highlightElement(modal.targetElement, modal.isHighlighted);
-									}
-									return newModals;
-								});
-							}}
+							onHighlight={() => toggleHighlight(id)}
 							isHighlighted={modalInfo.isHighlighted ?? false}
+							onBringToFront={bringToFront}
+							zIndex={modalInfo.zIndex}
 						/>
 					))}
 					<button
@@ -185,7 +255,7 @@ const FontDetectorUI: React.FC = () => {
 							lineHeight: '1',
 							color: 'white',
 							cursor: 'pointer',
-							zIndex: 10002,
+							zIndex: topZIndex + 1,
 						}}
 					>
 						Cancel

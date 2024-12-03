@@ -1,4 +1,4 @@
-import { FontHierarchyAnalyzer } from './modules/FontHierarchyAnalyzer';
+import FontInspector from './modules/CoreForeInspector';
 import { activate as activateFontDetectorUI } from './modules/FontDetectorUI';
 
 const EnhancedFontAnalyzer = (function () {
@@ -7,7 +7,7 @@ const EnhancedFontAnalyzer = (function () {
 	let isAnalyzing = false;
 
 	return {
-		hierarchyAnalyzer: new FontHierarchyAnalyzer(),
+		hierarchyAnalyzer: new FontInspector(),
 		analyzeInteractive: function () {
 			if (isAnalyzing) {
 				console.warn('Font analyzer is already active');

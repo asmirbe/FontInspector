@@ -7,8 +7,6 @@ export interface FontMetrics {
 	lineHeight: string;
 	letterSpacing: string;
 	category?: string;
-	loadTime?: number;
-	alternativeFonts?: string[];
 }
 
 export interface FontHierarchyData {

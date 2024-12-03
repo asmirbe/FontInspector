@@ -8,25 +8,41 @@ interface ModalProps {
 	onHighlight: () => void;
 	isHighlighted: boolean;
 	targetElement: HTMLElement;
+	modalId: string;  // Add modalId prop
+	onBringToFront: (modalId: string) => void;  // Add onBringToFront prop
+	zIndex: number;  // Add zIndex prop
 }
 
 
-export const Modal: React.FC<ModalProps> = ({
+const Modal: React.FC<ModalProps> = ({
 	metrics,
 	position,
 	onClose,
 	onHighlight,
 	isHighlighted,
-	targetElement
+	targetElement,
+	modalId,
+	onBringToFront,
+	zIndex
 }) => {
 	const handleClose = (e: React.MouseEvent) => {
 		e.stopPropagation();
+		if (isHighlighted) {
+			const computedStyle = window.getComputedStyle(targetElement);
+			targetElement.style.outline = computedStyle.outline;
+			targetElement.style.backgroundColor = computedStyle.backgroundColor;
+		}
 		onClose();
+	};
+
+	const handleModalClick = (e: React.MouseEvent) => {
+		e.stopPropagation();
+		onBringToFront(modalId);
 	};
 
 	return (
 		<div
-			onClick={e => e.stopPropagation()}
+			onClick={handleModalClick}
 			className="modal-container"
 			style={{
 				position: 'absolute',
@@ -37,7 +53,7 @@ export const Modal: React.FC<ModalProps> = ({
 				borderRadius: '4px',
 				boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
 				fontFamily: 'Segoe UI, Helvetica, Arial, sans-serif',
-				zIndex: 10001,
+				zIndex: zIndex,
 				maxWidth: '300px',
 				minWidth: '250px',
 				border: '1px solid rgba(0, 0, 0, 0.1)',
@@ -85,3 +101,6 @@ export const Modal: React.FC<ModalProps> = ({
 		</div>
 	);
 };
+
+
+export { Modal }

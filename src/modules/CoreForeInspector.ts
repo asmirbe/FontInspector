@@ -1,25 +1,15 @@
-import type {
-	FontMetrics,
-	FontHierarchyData
-} from '../types';
+import type { FontMetrics, FontHierarchyData } from '../types';
 
-export class FontHierarchyAnalyzer {
+export default class FontInspector {
 	private hierarchy: FontHierarchyData[] = [];
 	private fontUsageStats: Map<string, number> = new Map();
 	private primaryFont: string | null = null;
 	private metricsCache: WeakMap<HTMLElement, FontMetrics> = new WeakMap();
-	private fontLoadTimes: Map<string, number> = new Map();
 
 	private readonly excludedTags: Set<string> = new Set([
 		'script', 'style', 'meta', 'link', 'noscript', 'iframe',
 		'object', 'embed', 'param', 'source', 'track', 'svg', 'path',
 		'circle', 'rect', 'polygon', 'canvas'
-	]);
-
-	private readonly systemFonts: Set<string> = new Set([
-		'Arial', 'Helvetica', 'Times New Roman', 'Times', 'Courier New',
-		'Courier', 'Verdana', 'Georgia', 'Palatino', 'Garamond', 'Bookman',
-		'Comic Sans MS', 'Trebuchet MS', 'Impact', 'Sans-serif', 'Serif'
 	]);
 
 	private standardizeFontName(fontName: string): string {
@@ -80,11 +70,6 @@ export class FontHierarchyAnalyzer {
 				children: []
 			};
 
-			// Track font load time
-			if (!this.fontLoadTimes.has(metrics.name)) {
-				this.fontLoadTimes.set(metrics.name, performance.now());
-			}
-
 			if (parent) {
 				parent.children.push(current);
 			} else {
@@ -138,10 +123,7 @@ export class FontHierarchyAnalyzer {
 				size: style.fontSize || '16px',
 				color: style.color || '#000000',
 				lineHeight: style.lineHeight || 'normal',
-				letterSpacing: style.letterSpacing || 'normal',
-				category: this.getFontCategory(primaryFont),
-				alternativeFonts: fontFamilies.slice(1).map(f => this.standardizeFontName(f)),
-				loadTime: this.fontLoadTimes.get(this.standardizeFontName(primaryFont))
+				letterSpacing: style.letterSpacing || 'normal'
 			};
 
 			// Cache the metrics
@@ -152,18 +134,6 @@ export class FontHierarchyAnalyzer {
 			console.warn(`Error getting font metrics for element ${element.tagName}:`, error);
 			return null;
 		}
-	}
-
-	private getFontCategory(fontName: string): string {
-		const standardizedName = this.standardizeFontName(fontName);
-
-		if (standardizedName.toLowerCase().includes('serif')) return 'serif';
-		if (standardizedName.toLowerCase().includes('sans')) return 'sans-serif';
-		if (standardizedName.toLowerCase().includes('mono')) return 'monospace';
-		if (standardizedName.toLowerCase().includes('cursive')) return 'cursive';
-		if (standardizedName.toLowerCase().includes('fantasy')) return 'fantasy';
-
-		return this.systemFonts.has(standardizedName) ? 'system' : 'custom';
 	}
 
 	public getPrimaryFont(): string {
@@ -178,19 +148,10 @@ export class FontHierarchyAnalyzer {
 		return new Map([...this.fontUsageStats.entries()].sort((a, b) => b[1] - a[1]));
 	}
 
-	public getFontLoadTimes(): Map<string, number> {
-		return new Map([...this.fontLoadTimes.entries()]);
-	}
-
-	public getSystemFonts(): Set<string> {
-		return new Set(this.systemFonts);
-	}
-
 	public reset(): void {
 		this.hierarchy = [];
 		this.fontUsageStats.clear();
 		this.primaryFont = null;
 		this.metricsCache = new WeakMap();
-		this.fontLoadTimes.clear();
 	}
 }

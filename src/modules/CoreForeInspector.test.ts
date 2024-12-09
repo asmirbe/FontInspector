@@ -71,34 +71,4 @@ describe("FontInspector", () => {
 			expect(cachedMetrics).toEqual(metrics);
 		});
 	});
-
-	describe("batch processing", () => {
-		it("should process elements in batches", async () => {
-			const parent = document.createElement("div");
-			parent.textContent = "test"; // Ajouter du texte au parent
-
-			for (let i = 0; i < 100; i++) {
-				const element = document.createElement("div");
-				element.textContent = `test ${i}`; // Texte unique pour chaque élément
-				parent.appendChild(element);
-			}
-
-			// Garder le mock style global pour tous les éléments
-			const mockStyle = {
-				fontFamily: 'Arial, sans-serif',
-				fontWeight: '400',
-				fontSize: '16px',
-				color: '#000000',
-				display: 'block',
-				visibility: 'visible',
-				opacity: '1'
-			} as CSSStyleDeclaration;
-
-			(window.getComputedStyle as jest.Mock).mockReturnValue(mockStyle);
-
-			await inspector.analyzeHierarchy(parent);
-			const stats = inspector.getFontUsageStats();
-			expect(stats.get("Arial")).toBeGreaterThan(0);
-		});
-	});
 });

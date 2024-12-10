@@ -257,9 +257,7 @@ const FontDetectorUI: React.FC = () => {
 							cursor: 'pointer',
 							zIndex: topZIndex + 1,
 						}}
-					>
-						Cancel
-					</button>
+					>Cancel</button>
 				</>
 			)}
 		</>
